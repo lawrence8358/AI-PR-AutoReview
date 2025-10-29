@@ -1,0 +1,70 @@
+{
+    "manifestVersion": 1,
+    "id": "ai-pr-autoreview",
+    "name": "AI PR AutoReview",
+    "version": "1.0.19",
+    "publisher": "LawrenceShen",
+    "description": "Generates a code review for a pull request using AI, support Gemini.",
+    "public": true,
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "tags": [
+        "AI",
+        "Gemini",
+        "Build",
+        "Pull Request",
+        "PR Auto Comment",
+        "Code Review",
+        "Coding Standards",
+        "Automation",
+        "Quality Assurance",
+        "Lint"
+    ],
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/lawrence8358/AI-PR-AutoReview"
+    },
+    "branding": {
+        "color": "rgb(34, 34, 34)",
+        "theme": "dark"
+    },
+    "icons": {
+        "default": "images/extension-icon.png"
+    },
+    "content": {
+        "details": {
+            "path": "README.md"
+        },
+        "license": {
+            "path": "LICENSE.txt"
+        }
+    },
+    "files": [
+        {
+            "path": "dist"
+        }
+    ],
+    "screenshots": [
+        {
+            "path": "screenshots/main.png"
+        }
+    ],
+    "contributions": [
+        {
+            "id": "ai-pr-autoreview",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "dist"
+            }
+        }
+    ]
+}

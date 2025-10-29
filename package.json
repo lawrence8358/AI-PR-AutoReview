@@ -1,0 +1,36 @@
+{
+    "name": "aiprcodereview",
+    "version": "1.0.19",
+    "keywords": [
+        "AI pull request code review",
+        "Azure DevOps Pipeline",
+        "Gemini Code Review"
+    ],
+    "author": "Lawrence Shen",
+    "license": "MIT",
+    "description": "Generates a code review for a pull request using AI.",
+    "main": "dist/index.js",
+    "scripts": {
+        "clean": "if exist dist rmdir /s /q dist",
+        "typecheck": "tsc --noEmit",
+        "copy": "copy src\\task.json dist\\task.json && copy images\\extension-icon-small.png dist\\icon.png",
+        "bundle": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --format=cjs --sourcemap",
+        "build": "node scripts/sync-taskjson.js && npm run clean && npm run typecheck && npm run bundle && npm run copy",
+        "debug": "tsc && node --env-file=./devscripts/.env ./dist/index.js --debug",
+        "devscripts:ai": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist/devscripts/ai-comment.js",
+        "devscripts:pr-changes": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist/devscripts/pr-changes.js",
+        "devscripts:pr-comment": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist/devscripts/pr-comment.js",
+        "packaging:install-tool": "npm install -g tfx-cli",
+        "packaging:package": "npm run build && tfx extension create --manifest-globs vss-extension.json --output-path ./packages"
+    },
+    "dependencies": {
+        "axios": "^1.12.2",
+        "azure-devops-node-api": "^15.1.1",
+        "azure-pipelines-task-lib": "^5.2.1"
+    },
+    "devDependencies": {
+        "@types/node": "^24.9.1",
+        "esbuild": "^0.25.11",
+        "typescript": "^5.9.3"
+    }
+}

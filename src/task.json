@@ -1,0 +1,114 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+    "id": "7fbd6a53-381e-42bd-9197-662a29d52e78",
+    "name": "AI-PR-Code-Review",
+    "friendlyName": "AI PR AutoReview",
+    "description": "Generates a code review for a pull request using AI, support Gemini.",
+    "helpMarkDown": "",
+    "category": "Build",
+    "visibility": [
+        "Build"
+    ],
+    "author": "Lawrence Shen",
+    "version": {
+        "Major": 1,
+        "Minor": 0,
+        "Patch": 19
+    },
+    "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
+    "inputs": [
+        {
+            "name": "inputAiProvider",
+            "type": "pickList",
+            "label": "AI Provider",
+            "defaultValue": "Google",
+            "required": true,
+            "helpMarkDown": "Select the AI provider to use for generating comments.",
+            "options": {
+                "Google": "Google Gemini"
+            }
+        },
+        {
+            "name": "inputModelName",
+            "type": "string",
+            "label": "AI Model Name",
+            "defaultValue": "gemini-2.5-flash",
+            "required": true,
+            "helpMarkDown": "Enter the model name for the selected AI provider.",
+            "visibleRule": "inputAiProvider == Google"
+        },
+        {
+            "name": "inputModelKey",
+            "type": "string",
+            "label": "AI Model API Key",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Enter your API key for the selected AI provider.",
+            "visibleRule": "inputAiProvider == Google"
+        },
+        {
+            "name": "inputSystemInstruction",
+            "type": "multiLine",
+            "properties": {
+                "resizable": true,
+                "rows": "10"
+            },
+            "label": "System Instruction",
+            "defaultValue": "You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.\n1. Begin with a summary conclusion of the analysis, for example: AI Review Status: ✔️ Recommend Approval, ❌ Recommend Rejection, ❗ Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.\n2. Do not include any content unrelated to the code review.\n3. Use Traditional Chinese (zh-TW) for the review result. Each issue should be listed as a bullet point with concise explanations.\n4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.\n5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.\n6. Skip analysis of images, binary files, or other non-code files.\n7. Skip analysis of deleted files.\n8. Use Markdown format for the reply.",
+            "required": false,
+            "helpMarkDown": "System-level instructions for the AI model to guide its behavior."
+        },
+        {
+            "name": "inputPromptTemplate",
+            "type": "multiLine",
+            "properties": {
+                "resizable": true,
+                "rows": "5"
+            },
+            "label": "Prompt Template",
+            "defaultValue": "{code_changes}",
+            "required": true,
+            "helpMarkDown": "Custom prompt template for the AI model. Use {code_changes} as a placeholder for the actual code changes."
+        },
+        {
+            "name": "inputMaxOutputTokens",
+            "type": "string",
+            "label": "Max Output Tokens",
+            "defaultValue": "4096",
+            "required": false,
+            "helpMarkDown": "Maximum number of output tokens for the AI model's response."
+        },
+        {
+            "name": "inputTemperature",
+            "type": "string",
+            "label": "Temperature",
+            "defaultValue": "1.0",
+            "required": false,
+            "helpMarkDown": "Temperature setting for the AI model to control randomness in responses."
+        },
+        {
+            "name": "inputFileExtensions",
+            "type": "string",
+            "label": "File Extensions to Include",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Comma-separated list of file extensions to include in the code review analysis. If left empty, all file types are included by default, except binary types."
+        },
+        {
+            "name": "inputBinaryExtensions",
+            "type": "string",
+            "label": "Binary File Extensions to Exclude",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Comma-separated list of binary file extensions to exclude from the code review analysis. Default includes common binary types."
+        }
+    ],
+    "execution": {
+        "Node16": {
+            "target": "index.js"
+        },
+        "Node20_1": {
+            "target": "index.js"
+        }
+    }
+}
