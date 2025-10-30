@@ -76,9 +76,11 @@ d:\Project\AiPrCodeReview
 | DevOpsProjectName | 必要 | YourProject | Azure DevOps 專案名稱 |
 | DevOpsRepositoryId | 必要 | 00000000-0000-0000-0000-000000000000 | Repository ID（或在某些實作中可用 repo 名稱） |
 | DevOpsPRId | 必要 | 4 | 要測試的 Pull Request 編號 |
-| AiProvider | 必要 | Google | 在 `AIProviderService` 中註冊的 provider 名稱（例如 `Google`） |
-| GeminiAPIKey | 選用 | AI_KEY | Google Generative API Key，若使用 Google 時，此欄位必填 |
-| ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱 |
+| AiProvider | 必要 | Google | 在 `AIProviderService` 中註冊的 provider 名稱（例如 `Google`、`OpenAI`、`Grok`） |
+| GeminiAPIKey | 選用 | AI_KEY | Gemi API Key，若使用 Google 時，此欄位必填 |
+| OpenAIAPIKey | 選用 | sk-... | OpenAI API Key，若使用 OpenAI 時，此欄位必填 |
+| GrokAPIKey | 選用 | xai-... | Grok (xAI) API Key，若使用 Grok 時，此欄位必填 |
+| ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-4o、grok-beta） |
 | SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令 |
 | PromptTemplate | 必要 | {code_changes} | Prompt 範本，index.ts 以 `{code_changes}` 作為佔位符 |
 | MaxOutputTokens | 選用 | 4096 | AI 回應最大 token 數量 |
@@ -96,8 +98,10 @@ DevOpsProjectName=YourProject
 DevOpsRepositoryId=00000000-0000-0000-0000-000000000000
 DevOpsPRId=4
 
-# AI Provider
+# AI Provider (選擇其一：Google / OpenAI / Grok)
 GeminiAPIKey=PASTE_YOUR_GEMINI_KEY
+OpenAIAPIKey=PASTE_YOUR_OPENAI_KEY
+GrokAPIKey=PASTE_YOUR_GROK_KEY
 AiProvider=Google
 ModelName=gemini-2.5-flash
 SystemInstruction=你是一位資深軟體工程師，請協助進行程式碼審查與分析。

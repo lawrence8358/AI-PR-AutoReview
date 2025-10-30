@@ -30,8 +30,21 @@ class Main {
         if (this.isDebugMode) {
             // Debug 模式：從環境變數讀取
             inputAiProvider = process.env.AiProvider ?? 'Google';
-            inputModelName = process.env.ModelName ?? 'gemini-2.5-flash';
-            inputModelKey = process.env.GeminiAPIKey ?? '';
+
+            // 根據不同的 AI Provider 讀取對應的 API Key 和 Model
+            if (inputAiProvider.toLowerCase() === 'openai') {
+                inputModelName = process.env.ModelName ?? 'gpt-4.1-nano';
+                inputModelKey = process.env.OpenAIAPIKey ?? '';
+            } else if (inputAiProvider.toLowerCase() === 'grok') {
+                inputModelName = process.env.ModelName ?? 'grok-3-mini';
+                inputModelKey = process.env.GrokAPIKey ?? '';
+            } else if (inputAiProvider.toLowerCase() === 'google') {
+                inputModelName = process.env.ModelName ?? 'gemini-2.5-flash';
+                inputModelKey = process.env.GeminiAPIKey ?? '';
+            } else {
+                throw new Error(`⛔ Unsupported AI Provider: ${inputAiProvider}`);
+            }
+
             inputSystemInstruction = process.env.SystemInstruction ?? '';
             inputPromptTemplate = process.env.PromptTemplate ?? '{code_changes}';
             inputMaxOutputTokens = parseInt(process.env.MaxOutputTokens ?? '4096');
@@ -41,8 +54,21 @@ class Main {
         } else {
             // Pipeline 模式：從 task inputs 讀取
             inputAiProvider = tl.getInput('inputAiProvider', true) ?? 'Google';
-            inputModelName = tl.getInput('inputModelName', true) ?? 'gemini-2.5-flash';
-            inputModelKey = tl.getInput('inputModelKey', true) ?? '';
+
+            // 根據不同的 AI Provider 讀取對應的參數
+            if (inputAiProvider.toLowerCase() === 'openai') {
+                inputModelName = tl.getInput('inputOpenAIModelName', true) ?? 'gpt-4.1-nano';
+                inputModelKey = tl.getInput('inputOpenAIApiKey', true) ?? '';
+            } else if (inputAiProvider.toLowerCase() === 'grok') {
+                inputModelName = tl.getInput('inputGrokModelName', true) ?? 'grok-3-mini';
+                inputModelKey = tl.getInput('inputGrokApiKey', true) ?? '';
+            } else if (inputAiProvider.toLowerCase() === 'google') {
+                inputModelName = tl.getInput('inputModelName', true) ?? 'gemini-2.5-flash';
+                inputModelKey = tl.getInput('inputModelKey', true) ?? '';
+            } else {
+                throw new Error(`⛔ Unsupported AI Provider: ${inputAiProvider}`);
+            }
+
             inputSystemInstruction = tl.getInput('inputSystemInstruction', false) ?? '';
             inputPromptTemplate = tl.getInput('inputPromptTemplate', true) ?? '{code_changes}';
             inputMaxOutputTokens = parseInt(tl.getInput('inputMaxOutputTokens', false) ?? '4096');
@@ -82,7 +108,7 @@ class Main {
         let collectionUri: string;
         let projectName: string;
         let repositoryId: string;
-        let pullRequestId: number; 
+        let pullRequestId: number;
 
         if (this.isDebugMode) {
             // Debug 模式：從環境變數讀取
@@ -90,14 +116,14 @@ class Main {
             collectionUri = process.env.DevOpsOrgUrl ?? '';
             projectName = process.env.DevOpsProjectName ?? '';
             repositoryId = process.env.DevOpsRepositoryId ?? '';
-            pullRequestId = parseInt(process.env.DevOpsPRId ?? '0'); 
+            pullRequestId = parseInt(process.env.DevOpsPRId ?? '0');
         } else {
             // Pipeline 模式：從 Azure DevOps 變數讀取
             accessToken = tl.getEndpointAuthorizationParameter('SystemVssConnection', 'AccessToken', false) ?? '';
             collectionUri = tl.getVariable('System.CollectionUri') ?? '';
             projectName = tl.getVariable('System.TeamProject') ?? '';
             repositoryId = tl.getVariable('Build.Repository.ID') ?? '';
-            pullRequestId = parseInt(tl.getVariable('System.PullRequest.PullRequestId') ?? '0'); 
+            pullRequestId = parseInt(tl.getVariable('System.PullRequest.PullRequestId') ?? '0');
         }
 
         if (!accessToken) {
@@ -108,11 +134,11 @@ class Main {
             throw new Error('⛔ Unable to get Azure DevOps collection URI');
         }
 
-        if(!projectName) {
+        if (!projectName) {
             throw new Error('⛔ Unable to get Azure DevOps project name');
         }
 
-        if(!repositoryId) {
+        if (!repositoryId) {
             throw new Error('⛔ Unable to get Azure DevOps repository ID');
         }
 
@@ -224,7 +250,7 @@ async function run() {
         // 1. 取得輸入參數
         const inputs = main.getPipelineInputs();
         const connection = main.getDevOpsConnection();
- 
+
         // 確認是否有 Pull Request 資訊
         if (!connection.pullRequestId) {
             console.log('⚠️ Unable to get Pull Request information. Please ensure this task runs in a PR build.');
@@ -254,7 +280,7 @@ async function run() {
 
         // 4. 生成 AI 分析
         const reviewContent = await main.generateAIReview(aiProvider, inputs, changes);
-  
+
         // 5. 新增評論
         await main.addReviewComment(devOpsService, connection, reviewContent, inputs.modelName);
 

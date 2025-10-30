@@ -1,15 +1,15 @@
-# [English](./README.md) | [繁體中文](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.zh-TW.md)
+# [English](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.md) | [繁體中文](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.zh-TW.md)
 
 # 🤖 AI Code Review for Azure DevOps
 
 This is an Azure DevOps Pipeline extension whose primary purpose is to allow AI to automatically perform code reviews on Pull Request (PR) code changes (Diff) and post the review results as comments back to the PR.
 
-This version currently prioritizes support for Google Gemini and will add support for other AI platforms in the future.
+Currently supports: **Google Gemini**, **OpenAI**, and **Grok (xAI)**.
 
 
 ## ✨ Main Features
 + **Automated PR review**: Automatically triggers during PR build validation.
-+ **Integrated AI models**: Currently supports Google Gemini (default gemini-2.5-flash) for code analysis.
++ **Multiple AI platforms**: Supports Google Gemini, OpenAI, and Grok (xAI) for code analysis.
 + **Direct feedback**: Publishes AI review suggestions directly to the PR as comments.
 + **Highly customizable**: System prompts and model parameters (Temperature, etc.) can be customized.
 + **File filtering**: You can specify file extensions to include or exclude from analysis.
@@ -50,21 +50,30 @@ To ensure all code is code-reviewed, we recommend configuring branch policies to
 
 ## 📋 Task input parameters explained
 Below are all input parameters supported by this Task:
+  
+| Label | Type | Required | Default | Description |
+|---|---:|:---:|---|---|
+| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI). |
+| AI Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
+| Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
+| OpenAI Model Name | string | Conditional | gpt-4o | Enter the OpenAI model name (e.g., gpt-4o, gpt-4o-mini). Required when AI Provider is OpenAI. |
+| OpenAI API Key | string | Conditional | (empty) | Enter your OpenAI API Key. Required when AI Provider is OpenAI. |
+| Grok Model Name | string | Conditional | grok-3-mini | Enter the Grok model name (e.g., grok-3-mini). Required when AI Provider is Grok. |
+| Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
+| System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. |
+| Prompt Template | multiLine | Yes | {code_changes} | Custom prompt template for the AI model. `{code_changes}` will be replaced with the actual code changes. |
+| Max Output Tokens | string | No | 4096 | Maximum output token count for the AI model's response. |
+| Temperature | string | No | 1.0 | Temperature setting for the AI model, controlling randomness. |
+| File Extensions to Include | string | No | (empty) | Comma-separated list of file extensions to include in the Code Review analysis. If empty, all non-binary files are included by default. |
+| Binary File Extensions to Exclude | string | No | (empty) | Comma-separated list of binary file extensions to exclude from the Code Review analysis. Common binary types are excluded by default. |
 
-Below are all input parameters supported by this Task:
 
-| Parameter Name (Name) | Label | Type | Required | Default | Description |
-|---|---|---:|:---:|---|---|
-| `inputAiProvider` | AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini). |
-| `inputModelName` | AI Model Name | string | Yes | gemini-2.5-flash | Enter the model name for the selected AI platform. (Visible rule: inputAiProvider == Google) |
-| `inputModelKey` | AI Model API Key | string | Yes | (empty) | Enter the API Key for the selected AI platform. (Visible rule: inputAiProvider == Google) |
-| `inputSystemInstruction` | System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. |
-| `inputPromptTemplate` | Prompt Template | multiLine | Yes | {code_changes} | Custom prompt template for the AI model. `{code_changes}` will be replaced with the actual code changes. |
-| `inputMaxOutputTokens` | Max Output Tokens | string | No | 4096 | Maximum output token count for the AI model's response. |
-| `inputTemperature` | Temperature | string | No | 1.0 | Temperature setting for the AI model, controlling randomness. |
-| `inputFileExtensions` | File Extensions to Include | string | No | (empty) | Comma-separated list of file extensions to include in the Code Review analysis. If empty, all non-binary files are included by default. |
-| `inputBinaryExtensions` | Binary File Extensions to Exclude | string | No | (empty) | Comma-separated list of binary file extensions to exclude from the Code Review analysis. Common binary types are excluded by default. |
+## 🎉 Result display
+### Gemini
+![](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/Review_Gemini_EN.png)
 
-
-## Result display
-![](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/CI7.png)
+### OpenAI
+![](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/Review_OpenAI_EN.png)
+ 
+### Grok (xAI)
+![](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/Review_Grok_TW.png)

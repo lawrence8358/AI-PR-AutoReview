@@ -3,7 +3,7 @@
     "id": "7fbd6a53-381e-42bd-9197-662a29d52e78",
     "name": "AI-PR-Code-Review",
     "friendlyName": "AI PR AutoReview",
-    "description": "Generates a code review for a pull request using AI, support Gemini.",
+    "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok.",
     "helpMarkDown": "",
     "category": "Build",
     "visibility": [
@@ -12,8 +12,8 @@
     "author": "Lawrence Shen",
     "version": {
         "Major": 1,
-        "Minor": 0,
-        "Patch": 19
+        "Minor": 1,
+        "Patch": 0
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -25,26 +25,64 @@
             "required": true,
             "helpMarkDown": "Select the AI provider to use for generating comments.",
             "options": {
-                "Google": "Google Gemini"
+                "Google": "Google Gemini",
+                "OpenAI": "OpenAI",
+                "Grok": "Grok (xAI)"
             }
         },
         {
             "name": "inputModelName",
             "type": "string",
-            "label": "AI Model Name",
+            "label": "Gemini Model Name",
             "defaultValue": "gemini-2.5-flash",
             "required": true,
-            "helpMarkDown": "Enter the model name for the selected AI provider.",
+            "helpMarkDown": "Enter the Gemini model name. (e.g. gemini-2.5-flash, gemini-2.5-pro)",
             "visibleRule": "inputAiProvider == Google"
         },
         {
             "name": "inputModelKey",
             "type": "string",
-            "label": "AI Model API Key",
+            "label": "Gemini API Key",
             "defaultValue": "",
             "required": true,
             "helpMarkDown": "Enter your API key for the selected AI provider.",
             "visibleRule": "inputAiProvider == Google"
+        },
+        {
+            "name": "inputOpenAIModelName",
+            "type": "string",
+            "label": "OpenAI Model Name",
+            "defaultValue": "gpt-4.1-nano",
+            "required": true,
+            "helpMarkDown": "Enter the OpenAI model name (e.g. gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o, gpt-4o-mini).",
+            "visibleRule": "inputAiProvider == OpenAI"
+        },
+        {
+            "name": "inputOpenAIApiKey",
+            "type": "string",
+            "label": "OpenAI API Key",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Enter your OpenAI API key.",
+            "visibleRule": "inputAiProvider == OpenAI"
+        },
+        {
+            "name": "inputGrokModelName",
+            "type": "string",
+            "label": "Grok Model Name",
+            "defaultValue": "grok-3-mini",
+            "required": true,
+            "helpMarkDown": "Enter the Grok model name (e.g. grok-3-mini, grok-4-fast-non-reasoning).",
+            "visibleRule": "inputAiProvider == Grok"
+        },
+        {
+            "name": "inputGrokApiKey",
+            "type": "string",
+            "label": "Grok (xAI) API Key",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Enter your Grok (xAI) API key.",
+            "visibleRule": "inputAiProvider == Grok"
         },
         {
             "name": "inputSystemInstruction",

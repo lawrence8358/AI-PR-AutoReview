@@ -2,9 +2,9 @@
     "manifestVersion": 1,
     "id": "ai-pr-autoreview",
     "name": "AI PR AutoReview",
-    "version": "1.0.19",
+    "version": "1.1.0",
     "publisher": "LawrenceShen",
-    "description": "Generates a code review for a pull request using AI, support Gemini.",
+    "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok.",
     "public": true,
     "targets": [
         {
@@ -17,6 +17,9 @@
     "tags": [
         "AI",
         "Gemini",
+        "OpenAI",
+        "Grok",
+        "xAI",
         "Build",
         "Pull Request",
         "PR Auto Comment",

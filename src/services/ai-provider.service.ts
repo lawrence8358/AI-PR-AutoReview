@@ -1,5 +1,7 @@
 import { AIService, AIServiceConfig } from '../interfaces/ai-service.interface';
 import { GoogleAIService } from './google-ai.service';
+import { OpenAIService } from './openai.service';
+import { GrokService } from './grok.service';
 
 /**
  * AI 服務提供者類別
@@ -60,6 +62,12 @@ export class AIProviderService {
         switch (normalizedProvider) {
             case 'google':
                 service = new GoogleAIService(config.apiKey, config.modelName);
+                break;
+            case 'openai':
+                service = new OpenAIService(config.apiKey, config.modelName);
+                break;
+            case 'grok':
+                service = new GrokService(config.apiKey, config.modelName);
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);

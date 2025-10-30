@@ -3,12 +3,12 @@
 
 這是一個 Azure DevOps Pipeline 擴充套件，主要目的是讓 AI 自動針對 Pull Request (PR) 的程式碼變更（Diff）進行 Code Review，並將結果評論（Comment）回 PR。
 
-本版本目前優先支援 `Google Gemini`，未來將陸續支援其他 AI 平台。
+目前支援：**Google Gemini**、**OpenAI**、**Grok (xAI)**。
 
 
 ## ✨ 主要功能
 + **自動化 PR 審查**：在 PR 建置驗證 (Build Validation) 過程中自動觸發。
-+ **整合 AI 模型**：目前支援 Google Gemini (預設 gemini-2.5-flash) 進行程式碼分析。
++ **支援多個 AI 平台**：支援 Google Gemini、OpenAI、Grok (xAI) 進行程式碼分析。
 + **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中。
 + **高度可自訂**：可自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)。
 + **檔案過濾**：可指定要包含或排除的檔案副檔名。
@@ -50,18 +50,29 @@
 ## 📋 Task 參數詳解
 以下是此 Task 支援的所有輸入參數：
 
-| 參數名稱 (Name) | 標籤 (Label) | 類型 (Type) | 必要 | 預設值 | 說明 |
-|---|---|---:|:---:|---|---|
-| `inputAiProvider` | AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)。 |
-| `inputModelName` | AI Model Name | string | 是 | gemini-2.5-flash | 輸入所選 AI 平台的模型名稱。（可見規則: inputAiProvider == Google） |
-| `inputModelKey` | AI Model API Key | string | 是 | (空) | 輸入所選 AI 平台的 API Key。（可見規則: inputAiProvider == Google） |
-| `inputSystemInstruction` | System Instruction | multiLine | 否 | You are a senior software engineer. Please help... (詳見 Task 預設) | 用於指導 AI 模型行為的系統級指令。 |
-| `inputPromptTemplate` | Prompt Template | multiLine | 是 | {code_changes} | AI 模型的自訂提示模板。`{code_changes}` 將被替換為實際的程式碼變更內容。 |
-| `inputMaxOutputTokens` | Max Output Tokens | string | 否 | 4096 | AI 模型回應的最大輸出 Token 數量。 |
-| `inputTemperature` | Temperature | string | 否 | 1.0 | AI 模型的溫度設定，用於控制回應的隨機性。 |
-| `inputFileExtensions` | File Extensions to Include | string | 否 | (空) | 要納入 Code Review 分析的副檔名列表（以逗號分隔）。若為空，預設包含所有非二進位檔案。 |
-| `inputBinaryExtensions` | Binary File Extensions to Exclude | string | 否 | (空) | 要從 Code Review 分析中排除的二進位副檔名列表（以逗號分隔）。預設已包含常見的二進位類型。 |
+| 標籤 (Label) | 類型 (Type) | 必要 | 預設值 | 說明 |
+|---|---:|:---:|---|---|
+| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)。 |
+| Gemini Model Name | string | 條件式 | gemini-2.5-flash | 輸入 Google Gemini 的模型名稱，選擇 Google 時必填。 |
+| Gemini API Key | string | 條件式 | 無 | 輸入 Google Gemini 的 API Key，選擇 Google 時必填。 |
+| OpenAI Model Name | string | 條件式 | gpt-4o-mini | 輸入 OpenAI 的模型名稱（例如 gpt-4o、gpt-4o-mini），選擇 OpenAI 時必填。 |
+| OpenAI API Key | string | 條件式 | 無 | 輸入 OpenAI 的 API Key，選擇 OpenAI 時必填。 |
+| Grok Model Name | string | 條件式 | grok-3-mini | 輸入 Grok 的模型名稱（例如 grok-3-mini），選擇 Grok 時必填。 |
+| Grok (xAI) API Key | string | 條件式 | 無 | 輸入 Grok (xAI) 的 API Key，選擇 Grok 時必填。 |
+| System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。 |
+| Prompt Template | multiLine | 是 | {code_changes} | AI 模型的自訂提示模板。`{code_changes}` 將被替換為實際的程式碼變更內容。 |
+| Max Output Tokens | string | 否 | 4096 | AI 模型回應的最大輸出 Token 數量。 |
+| Temperature | string | 否 | 1.0 | AI 模型的溫度設定，用於控制回應的隨機性。 |
+| File Extensions to Include | string | 否 | 無 | 要納入 Code Review 分析的副檔名列表（以逗號分隔）。若為空，預設包含所有非二進位檔案。 |
+| Binary File Extensions to Exclude | string | 否 | 無 | 要從 Code Review 分析中排除的二進位副檔名列表（以逗號分隔）。預設已包含常見的二進位類型。 |
 
 
-## 結果展示
-![](screenshots/CI6.png?raw=true) 
+## 🎉 結果展示
+### Gemini
+![](screenshots/Review_Gemini_TW.png?raw=true) 
+
+### OpenAI
+![](screenshots/Review_OpenAI_TW.png?raw=true)
+
+### Grok (xAI)
+![](screenshots/Review_Grok_EN.png?raw=true)
