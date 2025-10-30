@@ -75,4 +75,4 @@
 ![](screenshots/Review_OpenAI_TW.png?raw=true)
 
 ### Grok (xAI)
-![](screenshots/Review_Grok_EN.png?raw=true)
+![](screenshots/Review_Grok_TW.png?raw=true)
