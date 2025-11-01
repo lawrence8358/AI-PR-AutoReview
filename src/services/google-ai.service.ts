@@ -1,14 +1,12 @@
 import axios from 'axios';
-import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
+import { AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
+import { BaseAIService } from './base-ai.service';
 
 /**
  * Google AI 服務實作
  * 使用 Google Gemini API 生成內容
  */
-export class GoogleAIService implements AIService {
-    private apiKey: string;
-    private model: string;
-
+export class GoogleAIService extends BaseAIService {
     /**
      * 建立 Google AI 服務實例
      * @param apiKey - Google AI API 金鑰
@@ -16,16 +14,15 @@ export class GoogleAIService implements AIService {
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
     constructor(apiKey: string, model: string = 'gemini-pro') {
-        if (!apiKey || apiKey.trim() === '') {
-            throw new Error('⛔ API key is required for Google AI service');
-        }
+        super(apiKey, model);
+    }
 
-        if (!model || model.trim() === '') {
-            throw new Error('⛔ Model name is required for Google AI service');
-        }
-
-        this.apiKey = apiKey;
-        this.model = model;
+    /**
+     * 取得服務名稱
+     * @returns 服務名稱
+     */
+    protected getServiceName(): string {
+        return 'Google AI';
     }
 
     /**
@@ -40,36 +37,15 @@ export class GoogleAIService implements AIService {
         prompt: string,
         config?: GenerateConfig
     ): Promise<AIResponse> {
-        console.log('🚩 Generating response using Google AI...');
-
         try {
-            // 建立 API 請求
+            this.logGenerationStart(config);
+
+            if (config?.showReviewContent)
+                this.printRequestInfo(systemInstruction, prompt, config);
+
+            // 建立 Gemini API 請求
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
-
-            // 準備請求內容
-            const requestBody: any = {
-                contents: [
-                    { role: 'user', parts: [{ text: prompt }] }
-                ]
-            };
-
-            if(systemInstruction && systemInstruction.trim() !== '') {
-                requestBody.systemInstruction = {
-                    parts: [{ text: systemInstruction }]
-                };
-            }
-
-            // 若有提供設定，則加入生成設定
-            if (config) {
-                requestBody.generationConfig = {};
-                if (config.temperature !== undefined) {
-                    requestBody.generationConfig.temperature = config.temperature;
-                }
-                if (config.maxOutputTokens !== undefined) {
-                    requestBody.generationConfig.maxOutputTokens = config.maxOutputTokens;
-                }
-            }
-
+            const requestBody = this.getRequestBody(systemInstruction, prompt, config);
             const response = await axios.post(
                 url,
                 requestBody,
@@ -82,12 +58,54 @@ export class GoogleAIService implements AIService {
 
             // 取得回應內容
             const content = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
+
+            if (config?.showReviewContent)
+                this.printResponseInfo(content);
+
             console.log('✅ Response generated successfully');
+
             return { content };
 
         } catch (error: any) {
             const message = JSON.stringify(error.response?.data || error.message);
             throw new Error('⛔ Google AI service error: ' + message);
         }
+    }
+
+    /** 
+     * 準備 Google AI 請求參數
+     * @param systemInstruction - 系統指令
+     * @param prompt - 提示詞
+     * @param config - 生成設定 (選用)
+     * @returns Google AI 請求參數
+     */
+    private getRequestBody(
+        systemInstruction: string,
+        prompt: string,
+        config?: GenerateConfig
+    ): any {
+        // 準備請求內容
+        const requestBody: any = {
+            contents: [
+                { role: 'user', parts: [{ text: prompt }] }
+            ]
+        };
+
+        if (systemInstruction && systemInstruction.trim() !== '') {
+            requestBody.systemInstruction = {
+                parts: [{ text: systemInstruction }]
+            };
+        }
+
+        if (!config) return requestBody;
+
+        // 若有提供設定，則加入生成設定
+        requestBody.generationConfig = {};
+        if (config.temperature !== undefined)
+            requestBody.generationConfig.temperature = config.temperature;
+        if (config.maxOutputTokens !== undefined)
+            requestBody.generationConfig.maxOutputTokens = config.maxOutputTokens;
+
+        return requestBody;
     }
 }

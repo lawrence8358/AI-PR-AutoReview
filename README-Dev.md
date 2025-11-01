@@ -24,8 +24,12 @@ d:\Project\AiPrCodeReview
 │   │   └── pipeline-inputs.interface.ts
 │   ├── services/            # 服務實作
 │   │   ├── ai-provider.service.ts
+│   │   ├── base-ai.service.ts
+│   │   ├── base-openai-compatible.service.ts
 │   │   ├── devops.service.ts
-│   │   └── google-ai.service.ts
+│   │   ├── google-ai.service.ts
+│   │   ├── openai.service.ts
+│   │   └── grok.service.ts
 │   ├── index.ts             # 主程式進入點
 │   └── task.json            # Azure Pipeline Task 定義檔
 ├── package.json             # npm 套件設定
@@ -87,6 +91,8 @@ d:\Project\AiPrCodeReview
 | Temperature | 選用 | 1.0 | AI 生成隨機性 |
 | FileExtensions | 選用 | .cs,.ts,.js | 要納入的檔案副檔名（逗號分隔） |
 | BinaryExtensions | 選用 | .exe,.dll,.jpg | 要排除的二進位檔副檔名 |
+| EnableThrottleMode | 選用 | true | 啟用 AI 節流模式（true：僅送差異；false：送整個檔案） |
+| ShowReviewContent | 選用 | false | 顯示審核內容（true：印出送給 AI 的程式碼內容、System Instruction、Prompt 以及 AI 回應；false：不顯示） |
 
 .env 範例說明（切勿提交含真實金鑰的檔案）：
 
@@ -112,6 +118,10 @@ Temperature=1.0
 # File filters
 FileExtensions=.cs,.ts,.js,.aspx,.html
 BinaryExtensions=.exe,.dll,.jpg,.png
+
+# Other settings
+EnableThrottleMode=true
+ShowReviewContent=false
 ```
 
 注意：`src/index.ts` 在 debug 模式會從 `process.env` 讀取（而非 Azure Pipelines 的變數）。

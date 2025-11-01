@@ -10,14 +10,18 @@ async function run() {
     const projectName = process.env.DevOpsProjectName || '';
     const repositoryId = process.env.DevOpsRepositoryId || '';
     const pullRequestId = +(process.env.DevOpsPRId || '0');
+    const fileExtensions = process.env.FileExtensions?.split(',').filter(ext => ext) || [];
+    const binaryExtensions = process.env.BinaryExtensions?.split(',').filter(ext => ext) || [];
+    const enableThrottleMode = (process.env.EnableThrottleMode ?? 'true').toLowerCase() === 'true';
 
     // 取得 PR 變更檔案
     const changes = await devOpsService.getPullRequestChanges(
         projectName,
         repositoryId,
         pullRequestId,
-        ['.cs', '.aspx'],  // 要包含的檔案類型
-        ['.exe', '.dll', '.bin', '.jpg', '.png']  // 要排除的檔案類型
+        fileExtensions,  // 要包含的檔案類型
+        binaryExtensions,  // 要排除的檔案類型
+        enableThrottleMode  // 節流模式
     );
 
     if (!changes) {

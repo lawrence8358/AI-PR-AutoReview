@@ -108,6 +108,7 @@ export class DevOpsService {
      * @param pullRequestId - Pull Request ID
      * @param fileExtensions - 要過濾的副檔名列表，例如 ['.ts', '.js']，若為空則檢查所有非二進位檔案
      * @param binaryExtensions - 要排除的二進位檔案副檔名列表
+     * @param enableThrottleMode - 啟用節流模式（預設 true，僅送差異；false 則送整個檔案）
      * @returns 變更內容的詳細資訊，包含檔案路徑和變更內容
      */
     public async getPullRequestChanges(
@@ -115,12 +116,27 @@ export class DevOpsService {
         repositoryId: string,
         pullRequestId: number,
         fileExtensions: string[] = [],
-        binaryExtensions: string[] = DEFAULT_BINARY_EXTENSIONS
+        binaryExtensions: string[] = [],
+        enableThrottleMode: boolean = true
     ) {
         console.log('🚩 Retrieving Pull Request changes...');
-        console.log(`Project Name: ${projectName}`);
-        console.log(`Repository ID: ${repositoryId}`);
-        console.log(`Pull Request ID: ${pullRequestId}`);
+        console.log(`+ Project Name: ${projectName}`);
+        console.log(`+ Repository ID: ${repositoryId}`);
+        console.log(`+ Pull Request ID: ${pullRequestId}`);
+
+        console.log(`+ FileExtensions: ${fileExtensions.length > 0 ? fileExtensions.join(', ') : 'None (all non-binary files)'}`);
+        if (fileExtensions.length > 0) {
+            console.log(`  + Filtering for extensions: ${fileExtensions.join(', ')}`);
+        }
+
+        console.log(`+ BinaryExtensions: ${binaryExtensions.length > 0 ? binaryExtensions.join(', ') : 'Using default list'}`);
+        // 如果沒有提供排除的二進位檔案副檔名，則使用預設清單
+        if (binaryExtensions.length === 0) {
+            binaryExtensions = DEFAULT_BINARY_EXTENSIONS as string[];
+        }
+        console.log(`  + Excluding binary extensions: ${binaryExtensions.join(', ')}`);
+
+        console.log(`+ Throttle Mode: ${enableThrottleMode ? 'Enabled (diff only)' : 'Disabled (full content)'}`);
 
         const gitApi = await this.getGitApi();
 
@@ -147,9 +163,12 @@ export class DevOpsService {
         }
 
         // 取得每個檔案的變更內容
-        const changeDetails = await this.getChangeDetails(filteredChanges, gitApi, repositoryId, projectName);
+        const changeDetails = await this.getChangeDetails(filteredChanges, gitApi, repositoryId, projectName, enableThrottleMode);
 
-        console.log(`✅ Completed diff comparison for ${changeDetails.length} matching files`);
+        if (enableThrottleMode)
+            console.log(`✅ Completed diff comparison for ${changeDetails.length} matching files`);
+        else
+            console.log(`✅ Retrieved full content for ${changeDetails.length} matching files`);
 
         return changeDetails;
     }
@@ -331,7 +350,7 @@ export class DevOpsService {
             return true;
         });
 
-        console.log(`🔍 After filtering, ${filteredEntries.length} file changes remaining`);
+        console.log(`🔍 Total changed files: ${changeEntries.length}, after filtering, ${filteredEntries.length} file changes remaining`);
         console.log(`📄 Files to be processed: ${filteredEntries.map(e => e.item?.path).join(', ')}`);
 
         return filteredEntries;
@@ -343,13 +362,15 @@ export class DevOpsService {
      * @param gitApi - Git API 實例
      * @param repositoryId - Repository ID
      * @param projectName - 專案 ID
+     * @param enableThrottleMode - 啟用節流模式（預設 true，僅送差異；false 則送整個檔案）
      * @returns 檔案變更的詳細資訊，包含檔案路徑和差異內容
      */
     private async getChangeDetails(
         changes: GitPullRequestIterationChanges["changeEntries"],
         gitApi: IGitApi,
         repositoryId: string,
-        projectName: string
+        projectName: string,
+        enableThrottleMode: boolean = true
     ) {
         if (!changes) return [];
 
@@ -364,15 +385,25 @@ export class DevOpsService {
 
                         // 類型如果是新增
                         if (change.changeType === VersionControlChangeType.Add) {
-                            content = this.formatAddedFileContent(sourceContent);
-                            console.log(`🆕 Retrieved content for new file: ${filePath}`);
+                            if (enableThrottleMode) {
+                                content = this.formatAddedFileContent(sourceContent);
+                                console.log(`🆕 Retrieved diff content for new file: ${filePath}`);
+                            } else {
+                                content = sourceContent;
+                                console.log(`🆕 Retrieved full content for new file: ${filePath}`);
+                            }
                         }
 
                         // 類型如果是編輯
                         if (change.changeType === VersionControlChangeType.Edit && change.item.originalObjectId) {
-                            const targetContent = await this.getFileContent(gitApi, repositoryId, projectName, change.item.originalObjectId);
-                            content = await this.getDiffContent(sourceContent, targetContent);
-                            console.log(`✏️ Retrieved diff content for edited file: ${filePath}`);
+                            if (enableThrottleMode) {
+                                const targetContent = await this.getFileContent(gitApi, repositoryId, projectName, change.item.originalObjectId);
+                                content = await this.getDiffContent(sourceContent, targetContent);
+                                console.log(`✏️ Retrieved diff content for edited file: ${filePath}`);
+                            } else {
+                                content = sourceContent;
+                                console.log(`✏️ Retrieved full content for edited file: ${filePath}`);
+                            }
                         }
                     } catch (error) {
                         console.error(`Error getting changes for ${filePath}:`, error);

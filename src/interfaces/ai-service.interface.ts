@@ -14,6 +14,8 @@ export interface GenerateConfig {
     maxOutputTokens?: number;
     /** 溫度值 (隨機性) (選用) */
     temperature?: number;
+    /** 顯示審核內容（印出送給 AI 的內容和回應） */
+    showReviewContent: boolean;
 }
 
 /**

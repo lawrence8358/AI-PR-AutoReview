@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 1,
-        "Patch": 0
+        "Patch": 1
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -138,7 +138,23 @@
             "label": "Binary File Extensions to Exclude",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Comma-separated list of binary file extensions to exclude from the code review analysis. Default includes common binary types."
+            "helpMarkDown": "Comma-separated list of binary file extensions to exclude from the code review analysis. Default includes: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv"
+        },
+        {
+            "name": "inputEnableThrottleMode",
+            "type": "boolean",
+            "label": "Enable AI Throttle Mode",
+            "defaultValue": "true",
+            "required": false,
+            "helpMarkDown": "When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review."
+        },
+        {
+            "name": "inputShowReviewContent",
+            "type": "boolean",
+            "label": "Show Review Content",
+            "defaultValue": "false",
+            "required": false,
+            "helpMarkDown": "When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes."
         }
     ],
     "execution": {

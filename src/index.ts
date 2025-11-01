@@ -26,6 +26,8 @@ class Main {
         let inputTemperature: number;
         let inputFileExtensions: string;
         let inputBinaryExtensions: string;
+        let inputEnableThrottleMode: boolean;
+        let inputShowReviewContent: boolean;
 
         if (this.isDebugMode) {
             // Debug 模式：從環境變數讀取
@@ -51,6 +53,8 @@ class Main {
             inputTemperature = parseFloat(process.env.Temperature ?? '1.0');
             inputFileExtensions = process.env.FileExtensions ?? '';
             inputBinaryExtensions = process.env.BinaryExtensions ?? '';
+            inputEnableThrottleMode = (process.env.EnableThrottleMode ?? 'true').toLowerCase() === 'true';
+            inputShowReviewContent = (process.env.ShowReviewContent ?? 'false').toLowerCase() === 'true';
         } else {
             // Pipeline 模式：從 task inputs 讀取
             inputAiProvider = tl.getInput('inputAiProvider', true) ?? 'Google';
@@ -75,6 +79,8 @@ class Main {
             inputTemperature = parseFloat(tl.getInput('inputTemperature', false) ?? '1.0');
             inputFileExtensions = tl.getInput('inputFileExtensions', false) ?? '';
             inputBinaryExtensions = tl.getInput('inputBinaryExtensions', false) ?? '';
+            inputEnableThrottleMode = (tl.getInput('inputEnableThrottleMode', false) ?? 'true').toLowerCase() === 'true';
+            inputShowReviewContent = (tl.getInput('inputShowReviewContent', false) ?? 'false').toLowerCase() === 'true';
         }
 
         // 解析副檔名列表
@@ -95,7 +101,9 @@ class Main {
             maxOutputTokens: inputMaxOutputTokens,
             temperature: inputTemperature,
             fileExtensions: fileExtensions,
-            binaryExtensions: binaryExtensions
+            binaryExtensions: binaryExtensions,
+            enableThrottleMode: inputEnableThrottleMode,
+            showReviewContent: inputShowReviewContent
         };
     }
 
@@ -168,7 +176,8 @@ class Main {
             connection.repositoryId,
             connection.pullRequestId,
             inputs.fileExtensions,
-            inputs.binaryExtensions.length > 0 ? inputs.binaryExtensions : undefined
+            inputs.binaryExtensions.length > 0 ? inputs.binaryExtensions : undefined,
+            inputs.enableThrottleMode
         );
 
         return changes;
@@ -205,7 +214,8 @@ class Main {
             prompt,
             {
                 maxOutputTokens: inputs.maxOutputTokens,
-                temperature: inputs.temperature
+                temperature: inputs.temperature,
+                showReviewContent: inputs.showReviewContent
             }
         );
 
@@ -279,7 +289,7 @@ async function run() {
         }
 
         // 4. 生成 AI 分析
-        const reviewContent = await main.generateAIReview(aiProvider, inputs, changes);
+        const reviewContent = await main.generateAIReview(aiProvider, inputs, changes); 
 
         // 5. 新增評論
         await main.addReviewComment(devOpsService, connection, reviewContent, inputs.modelName);

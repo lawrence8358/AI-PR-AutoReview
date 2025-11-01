@@ -20,6 +20,10 @@ export interface PipelineInputs {
     fileExtensions: string[];
     /** 要排除的二進位檔案副檔名列表 */
     binaryExtensions: string[];
+    /** 啟用 AI 節流模式（預設 true，僅送差異；false 則送整個檔案） */
+    enableThrottleMode: boolean;
+    /** 顯示審核內容（預設 false，不顯示；true 則 print 出送給 AI 以及回應的內容） */
+    showReviewContent: boolean;
 }
 
 /**

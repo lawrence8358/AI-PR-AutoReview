@@ -1,6 +1,6 @@
 {
     "name": "aiprcodereview",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "keywords": [
         "AI pull request code review",
         "Azure DevOps Pipeline",
@@ -11,15 +11,15 @@
     "description": "Generates a code review for a pull request using AI.",
     "main": "dist/index.js",
     "scripts": {
-        "clean": "if exist dist rmdir /s /q dist",
+        "clean": "shx rm -rf dist",
         "typecheck": "tsc --noEmit",
-        "copy": "copy src\\task.json dist\\task.json && copy images\\extension-icon-small.png dist\\icon.png",
+        "copy": "shx cp src/task.json dist/task.json && shx cp images/extension-icon-small.png dist/icon.png",
         "bundle": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --format=cjs --sourcemap",
         "build": "node scripts/sync-taskjson.js && npm run clean && npm run typecheck && npm run bundle && npm run copy",
         "debug": "tsc && node --env-file=./devscripts/.env ./dist/index.js --debug",
-        "devscripts:ai": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist/devscripts/ai-comment.js",
-        "devscripts:pr-changes": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist/devscripts/pr-changes.js",
-        "devscripts:pr-comment": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist/devscripts/pr-comment.js",
+        "devscripts:ai": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist-dev/devscripts/ai-comment.js",
+        "devscripts:pr-changes": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist-dev/devscripts/pr-changes.js",
+        "devscripts:pr-comment": "tsc -p tsconfig.devscripts.json && node --env-file=./devscripts/.env ./dist-dev/devscripts/pr-comment.js",
         "packaging:install-tool": "npm install -g tfx-cli",
         "packaging:package": "npm run build && tfx extension create --manifest-globs vss-extension.json --output-path ./packages"
     },
@@ -32,6 +32,7 @@
     "devDependencies": {
         "@types/node": "^24.9.1",
         "esbuild": "^0.25.11",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "shx": "^0.3.4"
     }
 }
