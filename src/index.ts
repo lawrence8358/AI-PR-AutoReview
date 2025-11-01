@@ -57,7 +57,7 @@ class Main {
             inputEnableThrottleMode = (process.env.EnableThrottleMode ?? 'true').toLowerCase() === 'true';
             inputShowReviewContent = (process.env.ShowReviewContent ?? 'false').toLowerCase() === 'true';
         } else {
-            // Pipeline 模式：從 task inputs 讀取
+            // Pipeline 模式：從 task inputs 讀取，account = admin
             inputAiProvider = tl.getInput('inputAiProvider', true) ?? 'Google';
 
             // 根據不同的 AI Provider 讀取對應的參數
