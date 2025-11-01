@@ -33,6 +33,7 @@ class Main {
             // Debug 模式：從環境變數讀取
             inputAiProvider = process.env.AiProvider ?? 'Google';
 
+            // 測試 Code Review 功能故意寫上 HotCode Key， GeminiKey ABC1234567890
             // 根據不同的 AI Provider 讀取對應的 API Key 和 Model
             if (inputAiProvider.toLowerCase() === 'openai') {
                 inputModelName = process.env.ModelName ?? 'gpt-4.1-nano';
