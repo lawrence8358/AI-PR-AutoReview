@@ -2,7 +2,8 @@
 import * as tl from 'azure-pipelines-task-lib/task';
 import { PipelineInputs, DevOpsConnection } from './interfaces/pipeline-inputs.interface';
 import { AIProviderService } from './services/ai-provider.service';
-import { DevOpsService } from './services/devops.service';
+import { DevOpsProviderService } from './services/devops-provider.service';
+import { DevOpsService } from './interfaces/devops-service.interface';
 
 
 class Main {
@@ -127,27 +128,40 @@ class Main {
             pullRequestId = parseInt(process.env.DevOpsPRId ?? '0');
         } else {
             // Pipeline 模式：從 Azure DevOps 變數讀取
-            accessToken = tl.getEndpointAuthorizationParameter('SystemVssConnection', 'AccessToken', false) ?? '';
-            collectionUri = tl.getVariable('System.CollectionUri') ?? '';
-            projectName = tl.getVariable('System.TeamProject') ?? '';
-            repositoryId = tl.getVariable('Build.Repository.ID') ?? '';
-            pullRequestId = parseInt(tl.getVariable('System.PullRequest.PullRequestId') ?? '0');
+            const repositoryUri = tl.getVariable('Build.Repository.Uri') ?? '';
+
+            // 根據 Repository URI 判斷是 GitHub 還是 Azure DevOps
+            const isGitHub = repositoryUri.toLowerCase().includes('github.com'); 
+            if (isGitHub) {
+                // Github 模式下目前還不知道怎麼取得 Access Token，所以先手動在變數裡設定，並將 PR 權限的 PAT 加入到變數中
+                accessToken = tl.getVariable('AccessToken') ?? '';
+                collectionUri = this.extractGitHubBaseUrl(repositoryUri);
+                repositoryId = this.extractGitHubOwnerRepo(repositoryUri);
+                projectName = repositoryId.split('/')[0]; // 使用 owner 作為 project name
+                pullRequestId = parseInt(tl.getVariable('System.PullRequest.PullRequestNumber') ?? '0');
+            } else {
+                accessToken = tl.getEndpointAuthorizationParameter('SystemVssConnection', 'AccessToken', false) ?? '';
+                collectionUri = tl.getVariable('System.CollectionUri') ?? '';
+                projectName = tl.getVariable('System.TeamProject') ?? '';
+                repositoryId = tl.getVariable('Build.Repository.ID') ?? '';
+                pullRequestId = parseInt(tl.getVariable('System.PullRequest.PullRequestId') ?? '0');
+            }
         }
 
         if (!accessToken) {
-            throw new Error('⛔ Unable to get Azure DevOps access token');
+            throw new Error('⛔ Unable to get DevOps access token');
         }
 
         if (!collectionUri) {
-            throw new Error('⛔ Unable to get Azure DevOps collection URI');
+            throw new Error('⛔ Unable to get DevOps collection URI');
         }
 
         if (!projectName) {
-            throw new Error('⛔ Unable to get Azure DevOps project name');
+            throw new Error('⛔ Unable to get DevOps project name');
         }
 
         if (!repositoryId) {
-            throw new Error('⛔ Unable to get Azure DevOps repository ID');
+            throw new Error('⛔ Unable to get DevOps repository ID');
         }
 
         return {
@@ -157,6 +171,40 @@ class Main {
             repositoryId,
             pullRequestId
         };
+    }
+
+    /**
+     * 從 GitHub Repository URI 提取 owner/repo 格式
+     * @param repositoryUri - GitHub Repository URI (例如: https://github.com/lawrence8358/AI-PR-AutoReview)
+     * @returns owner/repo 格式的字串 (例如: lawrence8358/AI-PR-AutoReview)
+     */
+    extractGitHubOwnerRepo(repositoryUri: string): string {
+        try {
+            const url = new URL(repositoryUri);
+            // 移除開頭的斜線並去除可能的 .git 後綴
+            const pathParts = url.pathname.replace(/^\//, '').replace(/\.git$/, '').split('/');
+            if (pathParts.length >= 2) {
+                return `${pathParts[0]}/${pathParts[1]}`;
+            }
+        } catch (e) {
+            console.error(`⚠️ Failed to parse GitHub URI: ${repositoryUri}`, e);
+        }
+        throw new Error(`⛔ Invalid GitHub repository URI format: ${repositoryUri}`);
+    }
+
+    /**
+     * 從 GitHub Repository URI 提取基礎 URL
+     * @param repositoryUri - GitHub Repository URI (例如: https://github.com/lawrence8358/AI-PR-AutoReview)
+     * @returns GitHub 基礎 URL (例如: https://github.com/)
+     */
+    extractGitHubBaseUrl(repositoryUri: string): string {
+        try {
+            const url = new URL(repositoryUri);
+            return `${url.protocol}//${url.host}/`;
+        } catch (e) {
+            console.error(`⚠️ Failed to parse GitHub URI: ${repositoryUri}`, e);
+        }
+        throw new Error(`⛔ Invalid GitHub repository URI format: ${repositoryUri}`);
     }
 
     /**
@@ -176,7 +224,7 @@ class Main {
             connection.repositoryId,
             connection.pullRequestId,
             inputs.fileExtensions,
-            inputs.binaryExtensions.length > 0 ? inputs.binaryExtensions : undefined,
+            inputs.binaryExtensions.length > 0 ? inputs.binaryExtensions : [],
             inputs.enableThrottleMode
         );
 
@@ -275,10 +323,13 @@ async function run() {
             modelName: inputs.modelName
         });
 
-        const devOpsService = new DevOpsService(
-            connection.accessToken,
-            connection.collectionUri
-        );
+        const devOpsProvider = new DevOpsProviderService();
+        const provider = DevOpsProviderService.detectProvider(connection.collectionUri);
+        devOpsProvider.registerService(provider, {
+            accessToken: connection.accessToken,
+            organizationUrl: connection.collectionUri
+        });
+        const devOpsService = devOpsProvider.getService(provider);
 
         // 3. 取得 PR 變更
         const changes = await main.getPullRequestChanges(devOpsService, connection, inputs);
@@ -289,7 +340,7 @@ async function run() {
         }
 
         // 4. 生成 AI 分析
-        const reviewContent = await main.generateAIReview(aiProvider, inputs, changes); 
+        const reviewContent = await main.generateAIReview(aiProvider, inputs, changes);
 
         // 5. 新增評論
         await main.addReviewComment(devOpsService, connection, reviewContent, inputs.modelName);

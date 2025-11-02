@@ -6,6 +6,8 @@ This is an Azure DevOps Pipeline extension whose primary purpose is to allow AI 
 
 Currently supports: **Google Gemini**, **OpenAI**, and **Grok (xAI)**.
 
+> This extension also supports GitHub repository Pull Request CI.
+
 
 ## ✨ Main Features
 + **Automated PR review**: Automatically triggers during PR build validation.
@@ -67,7 +69,7 @@ Below are all input parameters supported by this Task:
 | File Extensions to Include | string | No | (empty) | Comma-separated list of file extensions to include in the Code Review analysis. If empty, all non-binary files are included by default. |
 | Binary File Extensions to Exclude | string | No | (empty) | Comma-separated list of binary file extensions to exclude from the Code Review analysis. If left empty, the task will automatically exclude common binary file types by default (for example: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv). If you provide a value, your list will be used instead of these defaults. |
 | Enable AI Throttle Mode | boolean | No | true | When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review. |
-| Show Review Content | boolean | No | false | When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes. |
+| Show Review Content | true | No | false | When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes. |
 
 
 ## 🎉 Result display
