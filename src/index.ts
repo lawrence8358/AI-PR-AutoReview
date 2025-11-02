@@ -30,7 +30,7 @@ class Main {
         let inputShowReviewContent: boolean;
 
         if (this.isDebugMode) {
-            // Debug 模式：從環境變數讀取 13
+            // Debug 模式：從環境變數讀取 14
             inputAiProvider = process.env.AiProvider ?? 'Google';
 
             // 測試 Code Review 功能故意寫上 HotCode Key， GeminiKey ABC12345678902
