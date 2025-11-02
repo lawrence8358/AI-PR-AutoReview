@@ -20,23 +20,28 @@ d:\Project\AiPrCodeReview
 │   └── sync-taskjson.js     # 同步版本號至 task.json 和 package.json
 ├── src/                     # 主要程式碼
 │   ├── interfaces/          # TypeScript 介面定義
-│   │   ├── ai-service.interface.ts
-│   │   └── pipeline-inputs.interface.ts
+│   │   ├── ai-service.interface.ts           # AI 服務介面定義
+│   │   ├── devops-service.interface.ts       # DevOps 服務介面定義
+│   │   └── pipeline-inputs.interface.ts      # Pipeline 輸入參數介面定義
 │   ├── services/            # 服務實作
-│   │   ├── ai-provider.service.ts
-│   │   ├── base-ai.service.ts
-│   │   ├── base-openai-compatible.service.ts
-│   │   ├── devops.service.ts
-│   │   ├── google-ai.service.ts
-│   │   ├── openai.service.ts
-│   │   └── grok.service.ts
+│   │   ├── ai-provider.service.ts            # AI 服務進入點，AI 服務提供者管理器（統一管理所有 AI 服務）
+│   │   ├── base-ai.service.ts                # AI 服務抽象基礎類別（提供共用邏輯）
+│   │   ├── base-openai-compatible.service.ts # OpenAI 相容服務基礎類別
+│   │   ├── base-devops.service.ts            # DevOps 服務抽象基礎類別（提供共用邏輯）
+│   │   ├── azure-devops.service.ts           # Azure DevOps 服務實作
+│   │   ├── github-devops.service.ts          # GitHub 服務實作
+│   │   ├── devops-provider.service.ts        # DevOps 服務進入點，DevOps 服務提供者管理器（統一管理 Azure/GitHub）
+│   │   ├── google-ai.service.ts              # Google Gemini AI 服務實作
+│   │   ├── openai.service.ts                 # OpenAI 服務實作
+│   │   └── grok.service.ts                   # Grok (xAI) 服務實作
 │   ├── index.ts             # 主程式進入點
 │   └── task.json            # Azure Pipeline Task 定義檔
 ├── package.json             # npm 套件設定
 ├── tsconfig.json            # TypeScript 編譯設定
 ├── tsconfig.devscripts.json # devscripts 編譯設定
 ├── vss-extension.json       # Azure DevOps 擴充功能清單
-├── README.md                # 專案說明文件
+├── README.md                # 專案說明文件(英文版)
+├── README.zh-TW.md          # 專案說明文件(繁體中文版)
 ├── README-Dev.md            # 開發者說明文件
 └── LICENSE.txt              # 授權條款
 ``` 

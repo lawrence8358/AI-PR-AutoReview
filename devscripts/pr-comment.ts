@@ -1,10 +1,17 @@
-import { DevOpsService } from '../src/services/devops.service';
+import { DevOpsProviderService } from '../src/services/devops-provider.service';
 
 async function run() {
     // 初始化 DevOps API
     const accessToken = process.env.DevOpsAccessToken;
     const organizationUrl = process.env.DevOpsOrgUrl;
-    const devOpsService = new DevOpsService(accessToken, organizationUrl);
+    
+    const devOpsProvider = new DevOpsProviderService();
+    const provider = DevOpsProviderService.detectProvider(organizationUrl);
+    devOpsProvider.registerService(provider, {
+        accessToken: accessToken!,
+        organizationUrl: organizationUrl
+    });
+    const devOpsService = devOpsProvider.getService(provider);
 
     // DevOps 相關設定
     const projectName = process.env.DevOpsProjectName || '';

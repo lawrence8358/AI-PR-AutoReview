@@ -12,8 +12,8 @@
     "author": "Lawrence Shen",
     "version": {
         "Major": 1,
-        "Minor": 1,
-        "Patch": 1
+        "Minor": 2,
+        "Patch": 0
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -152,7 +152,7 @@
             "name": "inputShowReviewContent",
             "type": "boolean",
             "label": "Show Review Content",
-            "defaultValue": "false",
+            "defaultValue": "true",
             "required": false,
             "helpMarkDown": "When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes."
         }
