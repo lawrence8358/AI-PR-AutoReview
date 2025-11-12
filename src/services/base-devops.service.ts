@@ -10,7 +10,8 @@ export const DEFAULT_BINARY_EXTENSIONS: string[] = [
     '.zip', '.tar', '.gz', '.rar', '.7z',
     '.exe', '.dll', '.so', '.dylib',
     '.bin', '.dat', '.class',
-    '.mp3', '.mp4', '.avi', '.mov', '.flv'
+    '.mp3', '.mp4', '.avi', '.mov', '.flv',
+    ".md", ".markdown", ".txt", ".gitignore"
 ] as const;
 
 /**

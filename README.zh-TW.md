@@ -66,7 +66,7 @@
 | Max Output Tokens | string | 否 | 4096 | AI 模型回應的最大輸出 Token 數量。 |
 | Temperature | string | 否 | 1.0 | AI 模型的溫度設定，用於控制回應的隨機性。 |
 | File Extensions to Include | string | 否 | 無 | 要納入 Code Review 分析的副檔名列表（以逗號分隔）。若為空，預設包含所有非二進位檔案。 |
-| Binary File Extensions to Exclude | string | 否 | 無 | 要從 Code Review 分析中排除的二進位副檔名列表（以逗號分隔）。若為空值，系統會自動排除常見的二進位檔案類型（例如：.jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv）。若您提供自訂值，系統會採用您輸入的檔案類型列表。 |
+| Binary File Extensions to Exclude | string | 否 | 無 | 要從 Code Review 分析中排除的二進位副檔名列表（以逗號分隔）。若為空值，系統會自動排除常見的二進位檔案類型（例如：.jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .md, .markdown, .txt, .gitignore）。若您提供自訂值，系統會採用您輸入的檔案類型列表。 |
 | Enable AI Throttle Mode | boolean | 否 | true | 啟用 AI 節流模式（預設啟用），當啟用時僅送程式碼差異給 AI 審查；停用時則送整個新檔案內容給 AI 審查。 |
 | Show Review Content | boolean | 否 | true | 顯示審核內容，當啟用時會將送給 AI 的程式碼變更內容、System Instruction、Prompt 以及 AI 回應印出到主控台，方便除錯使用。 |
 

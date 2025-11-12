@@ -1,6 +1,6 @@
 {
     "name": "aiprcodereview",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "keywords": [
         "AI pull request code review",
         "Azure DevOps Pipeline",

@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "ai-pr-autoreview",
     "name": "AI PR AutoReview",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "publisher": "LawrenceShen",
     "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok.",
     "public": true,
