@@ -4,14 +4,14 @@
 
 This is an Azure DevOps Pipeline extension whose primary purpose is to allow AI to automatically perform code reviews on Pull Request (PR) code changes (Diff) and post the review results as comments back to the PR.
 
-Currently supports: **Google Gemini**, **OpenAI**, and **Grok (xAI)**.
+Currently supports: **Google Gemini**, **OpenAI**, **Grok (xAI)**, and **Claude (Anthropic)**.
 
 > This extension also supports GitHub repository Pull Request CI.
 
 
 ## ✨ Main Features
 + **Automated PR review**: Automatically triggers during PR build validation.
-+ **Multiple AI platforms**: Supports Google Gemini, OpenAI, and Grok (xAI) for code analysis.
++ **Multiple AI platforms**: Supports Google Gemini, OpenAI, Grok (xAI), and Claude (Anthropic) for code analysis.
 + **Direct feedback**: Publishes AI review suggestions directly to the PR as comments.
 + **Highly customizable**: System prompts and model parameters (Temperature, etc.) can be customized.
 + **File filtering**: You can specify file extensions to include or exclude from analysis.
@@ -55,13 +55,15 @@ Below are all input parameters supported by this Task:
   
 | Label | Type | Required | Default | Description |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI). |
+| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic). |
 | AI Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
 | Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
 | OpenAI Model Name | string | Conditional | gpt-4o | Enter the OpenAI model name (e.g., gpt-4o, gpt-4o-mini). Required when AI Provider is OpenAI. |
 | OpenAI API Key | string | Conditional | (empty) | Enter your OpenAI API Key. Required when AI Provider is OpenAI. |
 | Grok Model Name | string | Conditional | grok-3-mini | Enter the Grok model name (e.g., grok-3-mini). Required when AI Provider is Grok. |
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
+| Claude Model Name | string | Conditional | claude-haiku-4-5 | Enter the Claude model name (e.g., claude-haiku-4-5). Required when AI Provider is Claude. |
+| Claude API Key | string | Conditional | (empty) | Enter your Claude API Key. Required when AI Provider is Claude. |
 | System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. |
 | Prompt Template | multiLine | Yes | {code_changes} | Custom prompt template for the AI model. `{code_changes}` will be replaced with the actual code changes. |
 | Max Output Tokens | string | No | 4096 | Maximum output token count for the AI model's response. |
@@ -81,3 +83,6 @@ Below are all input parameters supported by this Task:
  
 ### Grok (xAI)
 ![](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/Review_Grok_EN.png)
+
+### Claude (Anthropic)
+![](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/Review_Claude_EN.png)

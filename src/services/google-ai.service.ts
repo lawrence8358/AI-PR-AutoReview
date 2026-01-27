@@ -1,19 +1,19 @@
 import axios from 'axios';
-import { AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
-import { BaseAIService } from './base-ai.service';
+import { GenerateConfig } from '../interfaces/ai-service.interface';
+import { BaseHttpAIService } from './base-http-ai.service';
 
 /**
  * Google AI 服務實作
  * 使用 Google Gemini API 生成內容
  */
-export class GoogleAIService extends BaseAIService {
+export class GoogleAIService extends BaseHttpAIService {
     /**
      * 建立 Google AI 服務實例
      * @param apiKey - Google AI API 金鑰
-     * @param model - 模型名稱，預設為 'gemini-pro'
+     * @param model - 模型名稱，預設為 'gemini-2.5-flash'
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
-    constructor(apiKey: string, model: string = 'gemini-pro') {
+    constructor(apiKey: string, model: string = 'gemini-2.5-flash') {
         super(apiKey, model);
     }
 
@@ -25,61 +25,17 @@ export class GoogleAIService extends BaseAIService {
         return 'Google AI';
     }
 
-    /**
-     * 生成評論內容
-     * @param systemInstruction - 系統指令
-     * @param prompt - 提示詞
-     * @param config - 生成設定 (選用)
-     * @returns AI 服務回應
-     */
-    public async generateComment(
-        systemInstruction: string,
-        prompt: string,
-        config?: GenerateConfig
-    ): Promise<AIResponse> {
-        try {
-            this.logGenerationStart(config);
-
-            if (config?.showReviewContent)
-                this.printRequestInfo(systemInstruction, prompt, config);
-
-            // 建立 Gemini API 請求
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
-            const requestBody = this.getRequestBody(systemInstruction, prompt, config);
-            const response = await axios.post(
-                url,
-                requestBody,
-                {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            // 取得回應內容
-            const content = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
-
-            if (config?.showReviewContent)
-                this.printResponseInfo(content);
-
-            console.log('✅ Response generated successfully');
-
-            return { content };
-
-        } catch (error: any) {
-            const message = JSON.stringify(error.response?.data || error.message);
-            throw new Error('⛔ Google AI service error: ' + message);
-        }
+    protected getApiUrl(): string {
+        return `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
     }
 
-    /** 
-     * 準備 Google AI 請求參數
-     * @param systemInstruction - 系統指令
-     * @param prompt - 提示詞
-     * @param config - 生成設定 (選用)
-     * @returns Google AI 請求參數
-     */
-    private getRequestBody(
+    protected getHeaders(): any {
+        return {
+            'Content-Type': 'application/json'
+        };
+    }
+
+    protected getRequestBody(
         systemInstruction: string,
         prompt: string,
         config?: GenerateConfig
@@ -107,5 +63,9 @@ export class GoogleAIService extends BaseAIService {
             requestBody.generationConfig.maxOutputTokens = config.maxOutputTokens;
 
         return requestBody;
+    }
+
+    protected extractContent(response: any): string {
+        return response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
     }
 }

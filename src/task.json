@@ -12,8 +12,8 @@
     "author": "Lawrence Shen",
     "version": {
         "Major": 1,
-        "Minor": 2,
-        "Patch": 1
+        "Minor": 3,
+        "Patch": 0
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -27,7 +27,8 @@
             "options": {
                 "Google": "Google Gemini",
                 "OpenAI": "OpenAI",
-                "Grok": "Grok (xAI)"
+                "Grok": "Grok (xAI)",
+                "Claude": "Claude (Anthropic)"
             }
         },
         {
@@ -83,6 +84,24 @@
             "required": true,
             "helpMarkDown": "Enter your Grok (xAI) API key.",
             "visibleRule": "inputAiProvider == Grok"
+        },
+        {
+            "name": "inputClaudeModelName",
+            "type": "string",
+            "label": "Claude Model Name",
+            "defaultValue": "claude-haiku-4-5",
+            "required": true,
+            "helpMarkDown": "Enter the Claude model name (e.g. claude-haiku-4-5).",
+            "visibleRule": "inputAiProvider == Claude"
+        },
+        {
+            "name": "inputClaudeApiKey",
+            "type": "string",
+            "label": "Claude API Key",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Enter your Claude (Anthropic) API key.",
+            "visibleRule": "inputAiProvider == Claude"
         },
         {
             "name": "inputSystemInstruction",

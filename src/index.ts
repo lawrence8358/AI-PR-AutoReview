@@ -41,6 +41,9 @@ class Main {
             } else if (inputAiProvider.toLowerCase() === 'grok') {
                 inputModelName = process.env.ModelName ?? 'grok-3-mini';
                 inputModelKey = process.env.GrokAPIKey ?? '';
+            } else if (inputAiProvider.toLowerCase() === 'claude') {
+                inputModelName = process.env.ModelName ?? 'claude-haiku-4-5';
+                inputModelKey = process.env.ClaudeAPIKey ?? '';
             } else if (inputAiProvider.toLowerCase() === 'google') {
                 inputModelName = process.env.ModelName ?? 'gemini-2.5-flash';
                 inputModelKey = process.env.GeminiAPIKey ?? '';
@@ -67,6 +70,9 @@ class Main {
             } else if (inputAiProvider.toLowerCase() === 'grok') {
                 inputModelName = tl.getInput('inputGrokModelName', true) ?? 'grok-3-mini';
                 inputModelKey = tl.getInput('inputGrokApiKey', true) ?? '';
+            } else if (inputAiProvider.toLowerCase() === 'claude') {
+                inputModelName = tl.getInput('inputClaudeModelName', true) ?? 'claude-haiku-4-5';
+                inputModelKey = tl.getInput('inputClaudeApiKey', true) ?? '';
             } else if (inputAiProvider.toLowerCase() === 'google') {
                 inputModelName = tl.getInput('inputModelName', true) ?? 'gemini-2.5-flash';
                 inputModelKey = tl.getInput('inputModelKey', true) ?? '';
@@ -131,7 +137,7 @@ class Main {
             const repositoryUri = tl.getVariable('Build.Repository.Uri') ?? '';
 
             // 根據 Repository URI 判斷是 GitHub 還是 Azure DevOps
-            const isGitHub = repositoryUri.toLowerCase().includes('github.com'); 
+            const isGitHub = repositoryUri.toLowerCase().includes('github.com');
             if (isGitHub) {
                 // Github 模式下目前還不知道怎麼取得 Access Token，所以先手動在變數裡設定，並將 PR 權限的 PAT 加入到變數中
                 accessToken = tl.getVariable('AccessToken') ?? '';

@@ -3,14 +3,14 @@
 
 這是一個 Azure DevOps Pipeline 擴充套件，主要目的是讓 AI 自動針對 Pull Request (PR) 的程式碼變更（Diff）進行 Code Review，並將結果評論（Comment）回 PR。
 
-目前支援：**Google Gemini**、**OpenAI**、**Grok (xAI)**。
+目前支援：**Google Gemini**、**OpenAI**、**Grok (xAI)**、**Claude (Anthropic)**。
 
 > 本套件亦支援針對 GitHub 儲存庫的 Pull Request CI 情境進行抓取與回寫評論。
 
 
 ## ✨ 主要功能
 + **自動化 PR 審查**：在 PR 建置驗證 (Build Validation) 過程中自動觸發。
-+ **支援多個 AI 平台**：支援 Google Gemini、OpenAI、Grok (xAI) 進行程式碼分析。
++ **支援多個 AI 平台**：支援 Google Gemini、OpenAI、Grok (xAI)、Claude (Anthropic) 進行程式碼分析。
 + **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中。
 + **高度可自訂**：可自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)。
 + **檔案過濾**：可指定要包含或排除的檔案副檔名。
@@ -54,13 +54,15 @@
 
 | 標籤 (Label) | 類型 (Type) | 必要 | 預設值 | 說明 |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)。 |
+| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)、Claude (Anthropic)。 |
 | Gemini Model Name | string | 條件式 | gemini-2.5-flash | 輸入 Google Gemini 的模型名稱，選擇 Google 時必填。 |
 | Gemini API Key | string | 條件式 | 無 | 輸入 Google Gemini 的 API Key，選擇 Google 時必填。 |
 | OpenAI Model Name | string | 條件式 | gpt-4o-mini | 輸入 OpenAI 的模型名稱（例如 gpt-4o、gpt-4o-mini），選擇 OpenAI 時必填。 |
 | OpenAI API Key | string | 條件式 | 無 | 輸入 OpenAI 的 API Key，選擇 OpenAI 時必填。 |
 | Grok Model Name | string | 條件式 | grok-3-mini | 輸入 Grok 的模型名稱（例如 grok-3-mini），選擇 Grok 時必填。 |
 | Grok (xAI) API Key | string | 條件式 | 無 | 輸入 Grok (xAI) 的 API Key，選擇 Grok 時必填。 |
+| Claude Model Name | string | 條件式 | claude-haiku-4-5 | 輸入 Claude 的模型名稱（例如 claude-haiku-4-5），選擇 Claude 時必填。 |
+| Claude API Key | string | 條件式 | 無 | 輸入 Claude (Anthropic) 的 API Key，選擇 Claude 時必填。 |
 | System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。 |
 | Prompt Template | multiLine | 是 | {code_changes} | AI 模型的自訂提示模板。`{code_changes}` 將被替換為實際的程式碼變更內容。 |
 | Max Output Tokens | string | 否 | 4096 | AI 模型回應的最大輸出 Token 數量。 |
@@ -80,3 +82,6 @@
 
 ### Grok (xAI)
 ![](screenshots/Review_Grok_TW.png?raw=true)
+
+### Claude (Anthropic)
+![](screenshots/Review_Claude_TW.png?raw=true)

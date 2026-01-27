@@ -8,7 +8,7 @@
 d:\Project\AiPrCodeReview
 ├── devscripts/              # 本地測試腳本
 │   ├── .env                 # 環境變數設定檔（請勿提交正式環境的金鑰）
-│   ├── ai-comment.ts        # 測試 AI 服務
+│   ├── ai-comment.ts        # 測試 AI 服務 (Google/OpenAI/Grok/Claude)
 │   ├── pr-changes.ts        # 測試取得 PR 變更
 │   └── pr-comment.ts        # 測試新增 PR 評論
 ├── images/                  # 擴充功能圖示
@@ -26,6 +26,7 @@ d:\Project\AiPrCodeReview
 │   ├── services/            # 服務實作
 │   │   ├── ai-provider.service.ts            # AI 服務進入點，AI 服務提供者管理器（統一管理所有 AI 服務）
 │   │   ├── base-ai.service.ts                # AI 服務抽象基礎類別（提供共用邏輯）
+│   │   ├── base-http-ai.service.ts           # HTTP AI 服務基礎類別（提供共用 Axios 邏輯）
 │   │   ├── base-openai-compatible.service.ts # OpenAI 相容服務基礎類別
 │   │   ├── base-devops.service.ts            # DevOps 服務抽象基礎類別（提供共用邏輯）
 │   │   ├── azure-devops.service.ts           # Azure DevOps 服務實作
@@ -33,7 +34,8 @@ d:\Project\AiPrCodeReview
 │   │   ├── devops-provider.service.ts        # DevOps 服務進入點，DevOps 服務提供者管理器（統一管理 Azure/GitHub）
 │   │   ├── google-ai.service.ts              # Google Gemini AI 服務實作
 │   │   ├── openai.service.ts                 # OpenAI 服務實作
-│   │   └── grok.service.ts                   # Grok (xAI) 服務實作
+│   │   ├── grok.service.ts                   # Grok (xAI) 服務實作
+│   │   └── claude.service.ts                 # Claude (Anthropic) 服務實作
 │   ├── index.ts             # 主程式進入點
 │   └── task.json            # Azure Pipeline Task 定義檔
 ├── package.json             # npm 套件設定
@@ -89,7 +91,8 @@ d:\Project\AiPrCodeReview
 | GeminiAPIKey | 選用 | AI_KEY | Gemi API Key，若使用 Google 時，此欄位必填 |
 | OpenAIAPIKey | 選用 | sk-... | OpenAI API Key，若使用 OpenAI 時，此欄位必填 |
 | GrokAPIKey | 選用 | xai-... | Grok (xAI) API Key，若使用 Grok 時，此欄位必填 |
-| ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-4o、grok-beta） |
+| ClaudeAPIKey | 選用 | sk-ant-... | Claude API Key，若使用 Claude 時，此欄位必填 |
+| ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-4o、grok-beta、claude-haiku-4-5） |
 | SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令 |
 | PromptTemplate | 必要 | {code_changes} | Prompt 範本，index.ts 以 `{code_changes}` 作為佔位符 |
 | MaxOutputTokens | 選用 | 4096 | AI 回應最大 token 數量 |
@@ -109,10 +112,11 @@ DevOpsProjectName=YourProject
 DevOpsRepositoryId=00000000-0000-0000-0000-000000000000
 DevOpsPRId=4
 
-# AI Provider (選擇其一：Google / OpenAI / Grok)
+# AI Provider (選擇其一：Google / OpenAI / Grok / Claude)
 GeminiAPIKey=PASTE_YOUR_GEMINI_KEY
 OpenAIAPIKey=PASTE_YOUR_OPENAI_KEY
 GrokAPIKey=PASTE_YOUR_GROK_KEY
+ClaudeAPIKey=PASTE_YOUR_CLAUDE_KEY
 AiProvider=Google
 ModelName=gemini-2.5-flash
 SystemInstruction=你是一位資深軟體工程師，請協助進行程式碼審查與分析。
@@ -187,7 +191,7 @@ npm run packaging:package
 
 ## 常見問題與除錯建議
 - 無法透過 PAT 取得 PR 內容：請檢查 PAT 權限（需要有 Code: Read & Pull Request Read/Write）。
-- AI 無回應或回應錯誤：檢查 `GeminiAPIKey`、`AiProvider`、`ModelName` 是否正確，並確認網路可連至該服務。
+- AI 無回應或回應錯誤：檢查 `GeminiAPIKey` (或 `OpenAIAPIKey`/`GrokAPIKey`/`ClaudeAPIKey`)、`AiProvider`、`ModelName` 是否正確，並確認網路可連至該服務。
 
 
 ## 參考文件

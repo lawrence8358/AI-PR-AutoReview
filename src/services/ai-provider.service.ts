@@ -2,6 +2,7 @@ import { AIService, AIServiceConfig } from '../interfaces/ai-service.interface';
 import { GoogleAIService } from './google-ai.service';
 import { OpenAIService } from './openai.service';
 import { GrokService } from './grok.service';
+import { ClaudeService } from './claude.service';
 
 /**
  * AI 服務提供者類別
@@ -45,7 +46,7 @@ export class AIProviderService {
      */
     public getService(provider: string): AIService {
         const normalizedProvider = provider.toLowerCase();
-        
+
         // 檢查是否已有實例
         if (this.services.has(normalizedProvider)) {
             return this.services.get(normalizedProvider)!;
@@ -68,6 +69,9 @@ export class AIProviderService {
                 break;
             case 'grok':
                 service = new GrokService(config.apiKey, config.modelName);
+                break;
+            case 'claude':
+                service = new ClaudeService(config.apiKey, config.modelName);
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);

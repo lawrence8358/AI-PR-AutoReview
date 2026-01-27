@@ -26,6 +26,12 @@ async function run() {
                 apiKey: process.env.GrokAPIKey ?? '',
                 modelName: process.env.ModelName ?? 'grok-3-mini'
             };
+        } else if (providerKey === 'claude') {
+            canonicalName = 'Claude';
+            registerConfig = {
+                apiKey: process.env.ClaudeAPIKey ?? '',
+                modelName: process.env.ModelName ?? 'claude-haiku-4-5'
+            };
         } else if (providerKey === 'google') {
             canonicalName = 'Google';
             registerConfig = {
@@ -42,7 +48,7 @@ async function run() {
         });
 
         const aiService = aiProvider.getService(canonicalName);
-        
+
         const response = await aiService.generateComment(
             systemInstruction,
             prompt,
