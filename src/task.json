@@ -3,7 +3,7 @@
     "id": "7fbd6a53-381e-42bd-9197-662a29d52e78",
     "name": "AI-PR-Code-Review",
     "friendlyName": "AI PR AutoReview",
-    "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok.",
+    "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok, Claude.",
     "helpMarkDown": "",
     "category": "Build",
     "visibility": [
@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 3,
-        "Patch": 0
+        "Patch": 1
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
