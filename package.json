@@ -1,10 +1,13 @@
 {
     "name": "aiprcodereview",
-    "version": "1.3.1",
+    "version": "1.3.3",
     "keywords": [
         "AI pull request code review",
         "Azure DevOps Pipeline",
-        "Gemini Code Review"
+        "Gemini Code Review",
+        "OpenAI Code Review",
+        "Grok Code Review",
+        "Claude Code Review"
     ],
     "author": "Lawrence Shen",
     "license": "MIT",
@@ -12,6 +15,7 @@
     "main": "dist/index.js",
     "scripts": {
         "clean": "shx rm -rf dist",
+        "test": "cross-env TS_NODE_PROJECT=tsconfig.test.json mocha -r ts-node/register test/**/*.spec.ts",
         "typecheck": "tsc --noEmit",
         "copy": "shx cp src/task.json dist/task.json && shx cp images/extension-icon-small.png dist/icon.png",
         "bundle": "esbuild src/index.ts --bundle --platform=node --target=node22 --outfile=dist/index.js --format=cjs --sourcemap",
@@ -24,16 +28,24 @@
         "packaging:package": "npm run build && tfx extension create --manifest-globs vss-extension.json --output-path ./packages"
     },
     "dependencies": {
+        "@octokit/rest": "^20.0.0",
         "axios": "^1.12.2",
         "azure-devops-node-api": "^15.1.1",
         "azure-pipelines-task-lib": "^5.2.1",
-        "openai": "^6.7.0",
-        "@octokit/rest": "^20.0.0"
+        "openai": "^6.7.0"
     },
     "devDependencies": {
+        "@types/chai": "^5.2.3",
+        "@types/mocha": "^10.0.10",
         "@types/node": "^24.9.1",
+        "@types/sinon": "^21.0.0",
+        "chai": "^6.2.2",
+        "cross-env": "^10.1.0",
         "esbuild": "^0.25.11",
-        "typescript": "^5.9.3",
-        "shx": "^0.3.4"
+        "mocha": "^11.7.5",
+        "shx": "^0.3.4",
+        "sinon": "^21.0.1",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.3"
     }
 }

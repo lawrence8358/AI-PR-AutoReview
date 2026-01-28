@@ -58,6 +58,7 @@ d:\Project\AiPrCodeReview
   + `npm run devscripts:pr-changes`
   + `npm run devscripts:pr-comment`
 - 本地開發模擬 pipeline 執行，請修改好 `devscripts/.env` 後，執行 `npm run debug`。
+- 執行單元測試：`npm test` (使用 `mocha` 和 `ts-node` 執行 `test/**/*.spec.ts`)。
 
 
 ## Scripts 與使用情境

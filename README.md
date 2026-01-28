@@ -64,7 +64,9 @@ Below are all input parameters supported by this Task:
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
 | Claude Model Name | string | Conditional | claude-haiku-4-5 | Enter the Claude model name (e.g., claude-haiku-4-5). Required when AI Provider is Claude. |
 | Claude API Key | string | Conditional | (empty) | Enter your Claude API Key. Required when AI Provider is Claude. |
-| System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. |
+| System Instruction Source | pickList | Yes | Inline | Select the source of the system instruction. Options: Inline, File. |
+| System Prompt File | string | No | (empty) | Path to the system prompt file. Supported formats: .md, .txt, .json, .yaml, .yml, .xml, .html. Optional. If the file is not found or empty, falls back to inline instruction. |
+| System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. Used when System Instruction Source is 'Inline'. Optional. If empty, a default code review instruction will be used automatically. |
 | Prompt Template | multiLine | Yes | {code_changes} | Custom prompt template for the AI model. `{code_changes}` will be replaced with the actual code changes. |
 | Max Output Tokens | string | No | 4096 | Maximum output token count for the AI model's response. |
 | Temperature | string | No | 1.0 | Temperature setting for the AI model, controlling randomness. |

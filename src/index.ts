@@ -1,12 +1,26 @@
 // import tl = require('azure-pipelines-task-lib/task');
 import * as tl from 'azure-pipelines-task-lib/task';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PipelineInputs, DevOpsConnection } from './interfaces/pipeline-inputs.interface';
 import { AIProviderService } from './services/ai-provider.service';
 import { DevOpsProviderService } from './services/devops-provider.service';
 import { DevOpsService } from './interfaces/devops-service.interface';
 
 
-class Main {
+const DEFAULT_SYSTEM_INSTRUCTION = `You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.
+1. Begin with a summary conclusion of the analysis, for example: AI Review Status: ✔️ Recommend Approval, ❌ Recommend Rejection, ❗ Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.
+2. Do not include any content unrelated to the code review.
+3. Use English (en-US) for the review result. Each issue should be listed as a bullet point with concise explanations.
+4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.
+5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.
+6. Skip analysis of images, binary files, or other non-code files.
+7. Skip analysis of deleted files.
+8. Use Markdown format for the reply.`;
+
+const ALLOWED_FILE_EXTENSIONS = ['.md', '.txt', '.json', '.yaml', '.yml', '.xml', '.html'];
+
+export class Main {
     private isDebugMode: boolean;
 
     constructor(isDebugMode: boolean = false) {
@@ -14,103 +28,187 @@ class Main {
     }
 
     /**
+     * 從檔案載入系統指令
+     * @param filePath - 檔案路徑
+     * @param fallbackInstruction - 當檔案讀取失敗時的備用指令
+     * @returns 系統指令內容
+     */
+    private loadSystemInstructionFromFile(filePath: string, fallbackInstruction: string): string {
+        // 驗證副檔名
+        const ext = path.extname(filePath).toLowerCase();
+        if (!ALLOWED_FILE_EXTENSIONS.includes(ext)) {
+            console.warn(`⚠️ Warning: System prompt file extension '${ext}' is not strictly supported. Recommended: .md, .txt`);
+        }
+
+        // 嘗試讀取檔案
+        if (!fs.existsSync(filePath)) {
+            console.warn(`⚠️ System prompt file not found: ${filePath}. Fallback to inline instruction.`);
+            return fallbackInstruction;
+        }
+
+        try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            if (content && content.trim().length > 0) {
+                return content;
+            } else {
+                console.warn(`⚠️ System prompt file is empty: ${filePath}. Fallback to inline instruction.`);
+                return fallbackInstruction;
+            }
+        } catch (error) {
+            console.warn(`⚠️ Failed to read system prompt file: ${filePath}. Fallback to inline instruction. Error: ${error}`);
+            return fallbackInstruction;
+        }
+    }
+
+    /**
+     * 取得系統指令（支援 inline 或 file 來源）
+     * @param source - 來源類型 ('Inline' 或 'File')
+     * @param filePath - 檔案路徑（當 source 為 'File' 時使用）
+     * @param inlineInstruction - inline 指令內容
+     * @returns 最終的系統指令
+     */
+    private getSystemInstruction(source: string, filePath: string, inlineInstruction: string): string {
+        let instruction = '';
+
+        if (source === 'File') {
+            if (!filePath) {
+                console.warn(`⚠️ System prompt file path is not specified. Fallback to inline instruction.`);
+                instruction = inlineInstruction;
+            } else {
+                instruction = this.loadSystemInstructionFromFile(filePath, inlineInstruction);
+            }
+        } else {
+            instruction = inlineInstruction;
+        }
+
+        // 最終檢查：如果仍然為空，使用預設指令
+        if (!instruction || instruction.trim().length === 0) {
+            console.warn(`⚠️ System prompt (inline or file fallback) is empty. Using default instruction.`);
+            return DEFAULT_SYSTEM_INSTRUCTION;
+        }
+
+        return instruction;
+    }
+
+    /**
+     * 從環境變數或 task input 取得輸入值
+     * @param envKey - 環境變數的 key
+     * @param taskInputKey - task input 的 key
+     * @param required - 是否必填
+     * @param defaultValue - 預設值
+     * @returns 輸入值
+     */
+    private getInputValue(envKey: string, taskInputKey: string, required: boolean = false, defaultValue: string = ''): string {
+        if (this.isDebugMode) {
+            return process.env[envKey] ?? defaultValue;
+        } else {
+            return tl.getInput(taskInputKey, required) ?? defaultValue;
+        }
+    }
+
+    /**
+     * 取得 AI Provider 的模型名稱和 API Key
+     * @param provider - AI Provider 名稱
+     * @returns { modelName, modelKey }
+     */
+    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string } {
+        const providerLower = provider.toLowerCase();
+
+        if (this.isDebugMode) {
+            const modelName = process.env.ModelName ?? this.getDefaultModelName(providerLower);
+            const modelKey = this.getModelKeyFromEnv(providerLower);
+            return { modelName, modelKey };
+        } else {
+            return this.getModelConfigFromTaskInput(providerLower);
+        }
+    }
+
+    private getDefaultModelName(provider: string): string {
+        const defaults: Record<string, string> = {
+            'openai': 'gpt-4.1-nano',
+            'grok': 'grok-3-mini',
+            'claude': 'claude-haiku-4-5',
+            'google': 'gemini-2.5-flash'
+        };
+        return defaults[provider] ?? 'gemini-2.5-flash';
+    }
+
+    private getModelKeyFromEnv(provider: string): string {
+        const keyMap: Record<string, string> = {
+            'openai': 'OpenAIAPIKey',
+            'grok': 'GrokAPIKey',
+            'claude': 'ClaudeAPIKey',
+            'google': 'GeminiAPIKey'
+        };
+        return process.env[keyMap[provider]] ?? '';
+    }
+
+    private getModelConfigFromTaskInput(provider: string): { modelName: string; modelKey: string } {
+        const configMap: Record<string, { nameKey: string; apiKeyKey: string; defaultName: string }> = {
+            'openai': { nameKey: 'inputOpenAIModelName', apiKeyKey: 'inputOpenAIApiKey', defaultName: 'gpt-4.1-nano' },
+            'grok': { nameKey: 'inputGrokModelName', apiKeyKey: 'inputGrokApiKey', defaultName: 'grok-3-mini' },
+            'claude': { nameKey: 'inputClaudeModelName', apiKeyKey: 'inputClaudeApiKey', defaultName: 'claude-haiku-4-5' },
+            'google': { nameKey: 'inputModelName', apiKeyKey: 'inputModelKey', defaultName: 'gemini-2.5-flash' }
+        };
+
+        const config = configMap[provider];
+        if (!config) {
+            throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
+        }
+
+        return {
+            modelName: tl.getInput(config.nameKey, true) ?? config.defaultName,
+            modelKey: tl.getInput(config.apiKeyKey, true) ?? ''
+        };
+    }
+
+    /**
      * 取得 Pipeline 的輸入參數
      * @returns Pipeline 輸入參數
      */
     getPipelineInputs(): PipelineInputs {
-        let inputAiProvider: string;
-        let inputModelName: string;
-        let inputModelKey: string;
-        let inputSystemInstruction: string;
-        let inputPromptTemplate: string;
-        let inputMaxOutputTokens: number;
-        let inputTemperature: number;
-        let inputFileExtensions: string;
-        let inputBinaryExtensions: string;
-        let inputEnableThrottleMode: boolean;
-        let inputShowReviewContent: boolean;
+        // 取得 AI Provider
+        const inputAiProvider = this.getInputValue('AiProvider', 'inputAiProvider', true, 'Google');
 
-        if (this.isDebugMode) {
-            // Debug 模式：從環境變數讀取
-            inputAiProvider = process.env.AiProvider ?? 'Google';
+        // 取得 AI Provider 設定
+        const { modelName, modelKey } = this.getAIProviderConfig(inputAiProvider);
 
-            // 根據不同的 AI Provider 讀取對應的 API Key 和 Model
-            if (inputAiProvider.toLowerCase() === 'openai') {
-                inputModelName = process.env.ModelName ?? 'gpt-4.1-nano';
-                inputModelKey = process.env.OpenAIAPIKey ?? '';
-            } else if (inputAiProvider.toLowerCase() === 'grok') {
-                inputModelName = process.env.ModelName ?? 'grok-3-mini';
-                inputModelKey = process.env.GrokAPIKey ?? '';
-            } else if (inputAiProvider.toLowerCase() === 'claude') {
-                inputModelName = process.env.ModelName ?? 'claude-haiku-4-5';
-                inputModelKey = process.env.ClaudeAPIKey ?? '';
-            } else if (inputAiProvider.toLowerCase() === 'google') {
-                inputModelName = process.env.ModelName ?? 'gemini-2.5-flash';
-                inputModelKey = process.env.GeminiAPIKey ?? '';
-            } else {
-                throw new Error(`⛔ Unsupported AI Provider: ${inputAiProvider}`);
-            }
+        // 取得系統指令
+        const systemInstructionSource = this.getInputValue('SystemInstructionSource', 'inputSystemInstructionSource', false, 'Inline');
+        const systemPromptFile = this.getInputValue('SystemPromptFile', 'inputSystemPromptFile', false, '');
+        const inlineInstruction = this.getInputValue('SystemInstruction', 'inputSystemInstruction', false, '');
+        const systemInstruction = this.getSystemInstruction(systemInstructionSource, systemPromptFile, inlineInstruction);
 
-            inputSystemInstruction = process.env.SystemInstruction ?? '';
-            inputPromptTemplate = process.env.PromptTemplate ?? '{code_changes}';
-            inputMaxOutputTokens = parseInt(process.env.MaxOutputTokens ?? '4096');
-            inputTemperature = parseFloat(process.env.Temperature ?? '1.0');
-            inputFileExtensions = process.env.FileExtensions ?? '';
-            inputBinaryExtensions = process.env.BinaryExtensions ?? '';
-            inputEnableThrottleMode = (process.env.EnableThrottleMode ?? 'true').toLowerCase() === 'true';
-            inputShowReviewContent = (process.env.ShowReviewContent ?? 'false').toLowerCase() === 'true';
-        } else {
-            // Pipeline 模式：從 task inputs 讀取
-            inputAiProvider = tl.getInput('inputAiProvider', true) ?? 'Google';
-
-            // 根據不同的 AI Provider 讀取對應的參數
-            if (inputAiProvider.toLowerCase() === 'openai') {
-                inputModelName = tl.getInput('inputOpenAIModelName', true) ?? 'gpt-4.1-nano';
-                inputModelKey = tl.getInput('inputOpenAIApiKey', true) ?? '';
-            } else if (inputAiProvider.toLowerCase() === 'grok') {
-                inputModelName = tl.getInput('inputGrokModelName', true) ?? 'grok-3-mini';
-                inputModelKey = tl.getInput('inputGrokApiKey', true) ?? '';
-            } else if (inputAiProvider.toLowerCase() === 'claude') {
-                inputModelName = tl.getInput('inputClaudeModelName', true) ?? 'claude-haiku-4-5';
-                inputModelKey = tl.getInput('inputClaudeApiKey', true) ?? '';
-            } else if (inputAiProvider.toLowerCase() === 'google') {
-                inputModelName = tl.getInput('inputModelName', true) ?? 'gemini-2.5-flash';
-                inputModelKey = tl.getInput('inputModelKey', true) ?? '';
-            } else {
-                throw new Error(`⛔ Unsupported AI Provider: ${inputAiProvider}`);
-            }
-
-            inputSystemInstruction = tl.getInput('inputSystemInstruction', false) ?? '';
-            inputPromptTemplate = tl.getInput('inputPromptTemplate', true) ?? '{code_changes}';
-            inputMaxOutputTokens = parseInt(tl.getInput('inputMaxOutputTokens', false) ?? '4096');
-            inputTemperature = parseFloat(tl.getInput('inputTemperature', false) ?? '1.0');
-            inputFileExtensions = tl.getInput('inputFileExtensions', false) ?? '';
-            inputBinaryExtensions = tl.getInput('inputBinaryExtensions', false) ?? '';
-            inputEnableThrottleMode = (tl.getInput('inputEnableThrottleMode', false) ?? 'true').toLowerCase() === 'true';
-            inputShowReviewContent = (tl.getInput('inputShowReviewContent', false) ?? 'false').toLowerCase() === 'true';
-        }
+        // 取得其他參數
+        const promptTemplate = this.getInputValue('PromptTemplate', 'inputPromptTemplate', true, '{code_changes}');
+        const maxOutputTokens = parseInt(this.getInputValue('MaxOutputTokens', 'inputMaxOutputTokens', false, '4096'));
+        const temperature = parseFloat(this.getInputValue('Temperature', 'inputTemperature', false, '1.0'));
+        const fileExtensionsStr = this.getInputValue('FileExtensions', 'inputFileExtensions', false, '');
+        const binaryExtensionsStr = this.getInputValue('BinaryExtensions', 'inputBinaryExtensions', false, '');
+        const enableThrottleMode = this.getInputValue('EnableThrottleMode', 'inputEnableThrottleMode', false, 'true').toLowerCase() === 'true';
+        const showReviewContent = this.getInputValue('ShowReviewContent', 'inputShowReviewContent', false, 'false').toLowerCase() === 'true';
 
         // 解析副檔名列表
-        const fileExtensions = inputFileExtensions
-            ? inputFileExtensions.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0)
+        const fileExtensions = fileExtensionsStr
+            ? fileExtensionsStr.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0)
             : [];
 
-        const binaryExtensions = inputBinaryExtensions
-            ? inputBinaryExtensions.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0)
+        const binaryExtensions = binaryExtensionsStr
+            ? binaryExtensionsStr.split(',').map(ext => ext.trim()).filter(ext => ext.length > 0)
             : [];
 
         return {
             aiProvider: inputAiProvider,
-            modelName: inputModelName,
-            modelKey: inputModelKey,
-            systemInstruction: inputSystemInstruction,
-            promptTemplate: inputPromptTemplate,
-            maxOutputTokens: inputMaxOutputTokens,
-            temperature: inputTemperature,
-            fileExtensions: fileExtensions,
-            binaryExtensions: binaryExtensions,
-            enableThrottleMode: inputEnableThrottleMode,
-            showReviewContent: inputShowReviewContent
+            modelName,
+            modelKey,
+            systemInstruction,
+            promptTemplate,
+            maxOutputTokens,
+            temperature,
+            fileExtensions,
+            binaryExtensions,
+            enableThrottleMode,
+            showReviewContent
         };
     }
 
@@ -360,4 +458,6 @@ async function run() {
     }
 }
 
-run();
+if (require.main === module) {
+    run();
+}

@@ -63,7 +63,9 @@
 | Grok (xAI) API Key | string | 條件式 | 無 | 輸入 Grok (xAI) 的 API Key，選擇 Grok 時必填。 |
 | Claude Model Name | string | 條件式 | claude-haiku-4-5 | 輸入 Claude 的模型名稱（例如 claude-haiku-4-5），選擇 Claude 時必填。 |
 | Claude API Key | string | 條件式 | 無 | 輸入 Claude (Anthropic) 的 API Key，選擇 Claude 時必填。 |
-| System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。 |
+| System Instruction Source | pickList | 是 | Inline | 選擇系統指令的來源。選項: Inline (行內), File (檔案)。 |
+| System Prompt File | string | 否 | 無 | 系統提示詞檔案的路徑。支援格式: .md, .txt, .json, .yaml, .yml, .xml, .html。選填。如果檔案不存在或為空，會自動回退到行內指令。 |
+| System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。當 System Instruction Source 選擇 'Inline' 時使用。選填。如果為空，系統會自動使用預設的 Code Review 指令。 |
 | Prompt Template | multiLine | 是 | {code_changes} | AI 模型的自訂提示模板。`{code_changes}` 將被替換為實際的程式碼變更內容。 |
 | Max Output Tokens | string | 否 | 4096 | AI 模型回應的最大輸出 Token 數量。 |
 | Temperature | string | 否 | 1.0 | AI 模型的溫度設定，用於控制回應的隨機性。 |
