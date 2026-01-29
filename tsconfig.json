@@ -4,7 +4,7 @@
     "outDir": "./dist",
     "module": "nodenext",
     "target": "es2022",
-    "types": [],
+    "types": ["node"],
     "declaration": false,
     "strict": true,
     "esModuleInterop": true,

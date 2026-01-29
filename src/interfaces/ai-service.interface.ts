@@ -3,7 +3,11 @@
  */
 export interface AIResponse {
     /** 回應內容 */
-    content: string; 
+    content: string;
+    /** 輸入 Token 數（選用） */
+    inputTokens?: number;
+    /** 輸出 Token 數（選用） */
+    outputTokens?: number;
 }
 
 /**

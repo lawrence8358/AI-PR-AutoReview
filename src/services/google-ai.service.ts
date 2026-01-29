@@ -68,4 +68,17 @@ export class GoogleAIService extends BaseHttpAIService {
     protected extractContent(response: any): string {
         return response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
     }
+
+    /**
+     * 提取 Google Gemini API 回應中的 Token 使用情況
+     * @param response - API 回應物件
+     * @returns { inputTokens, outputTokens }
+     */
+    protected extractTokenUsage(response: any): { inputTokens?: number; outputTokens?: number } {
+        const usage = response.data.usageMetadata;
+        return {
+            inputTokens: usage?.promptTokenCount,
+            outputTokens: usage?.candidatesTokenCount
+        };
+    }
 }

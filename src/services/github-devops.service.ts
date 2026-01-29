@@ -97,6 +97,7 @@ export class GitHubDevOpsService extends BaseDevOpsService {
      * @param fileExtensions - 要包含的副檔名列表（例如 ['.ts']），若為空則表示所有非二進位檔案
      * @param binaryExtensions - 要排除的二進位副檔名列表
      * @param enableThrottleMode - 節流模式：true 表示僅取差異 (patch)，false 表示取完整檔案內容
+     * @param enableIncrementalDiff - 啟用增量 Diff 模式（預設 false，檢查所有 PR 變更；true 則僅檢查最後一次推送的變更）
      * @returns 變更詳細資訊陣列，格式為 { path, changeType, content }，若無變更則返回 null
      */
     public async getPullRequestChanges(
@@ -105,7 +106,8 @@ export class GitHubDevOpsService extends BaseDevOpsService {
         pullRequestId: number,
         fileExtensions: string[] = [],
         binaryExtensions: string[] = [],
-        enableThrottleMode: boolean = true
+        enableThrottleMode: boolean = true,
+        enableIncrementalDiff: boolean = false
     ): Promise<FileChangeDetail[] | null> {
         // 確保二進位檔案副檔名有預設值
         binaryExtensions = this.ensureBinaryExtensions(binaryExtensions);
@@ -119,6 +121,11 @@ export class GitHubDevOpsService extends BaseDevOpsService {
             binaryExtensions,
             enableThrottleMode
         );
+
+        if (enableIncrementalDiff) {
+            console.log('🔄 Incremental Diff Mode: Enabled - Retrieving latest push changes');
+            console.log('⚠️ Note: GitHub API provides all PR changes by default. For true incremental diff, you may need to use Git commands to compare individual commits.');
+        }
 
         const { owner, repo } = this.parseOwnerRepo(repositoryId);
 

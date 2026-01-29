@@ -24,6 +24,8 @@ export interface PipelineInputs {
     enableThrottleMode: boolean;
     /** 顯示審核內容（預設 false，不顯示；true 則 print 出送給 AI 以及回應的內容） */
     showReviewContent: boolean;
+    /** 啟用增量 Diff 模式（預設 false，檢查所有 PR 變更；true 則僅檢查最後一次推送的變更） */
+    enableIncrementalDiff: boolean;
 }
 
 /**

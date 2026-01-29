@@ -187,6 +187,7 @@ export class Main {
         const binaryExtensionsStr = this.getInputValue('BinaryExtensions', 'inputBinaryExtensions', false, '');
         const enableThrottleMode = this.getInputValue('EnableThrottleMode', 'inputEnableThrottleMode', false, 'true').toLowerCase() === 'true';
         const showReviewContent = this.getInputValue('ShowReviewContent', 'inputShowReviewContent', false, 'false').toLowerCase() === 'true';
+        const enableIncrementalDiff = this.getInputValue('EnableIncrementalDiff', 'inputEnableIncrementalDiff', false, 'false').toLowerCase() === 'true';
 
         // 解析副檔名列表
         const fileExtensions = fileExtensionsStr
@@ -208,7 +209,8 @@ export class Main {
             fileExtensions,
             binaryExtensions,
             enableThrottleMode,
-            showReviewContent
+            showReviewContent,
+            enableIncrementalDiff
         };
     }
 
@@ -329,7 +331,8 @@ export class Main {
             connection.pullRequestId,
             inputs.fileExtensions,
             inputs.binaryExtensions.length > 0 ? inputs.binaryExtensions : [],
-            inputs.enableThrottleMode
+            inputs.enableThrottleMode,
+            inputs.enableIncrementalDiff
         );
 
         return changes;
@@ -340,7 +343,7 @@ export class Main {
      * @param aiProvider - AI Provider 服務實例
      * @param inputs - Pipeline 輸入參數
      * @param changes - PR 變更檔案清單
-     * @returns AI 分析結果
+     * @returns AI 分析結果，包含內容和 token 使用情況
      */
     async generateAIReview(
         aiProvider: AIProviderService,
@@ -352,9 +355,7 @@ export class Main {
 
         // 組合變更內容
         const codeChanges = changes
-            .map(change => {
-                return `\n## File: ${change.path}\n\`\`\`\n${change.content}\n\`\`\``;
-            })
+            .map(change => `\n## File: ${change.path}\n\`\`\`\n${change.content}\n\`\`\``)
             .join('\n');
 
         // 替換提示詞範本中的佔位符
@@ -371,7 +372,17 @@ export class Main {
             }
         );
 
-        return aiResponse.content;
+        // 記錄總 token 使用情況
+        if (aiResponse.inputTokens && aiResponse.outputTokens) {
+            const totalTokens = aiResponse.inputTokens + aiResponse.outputTokens;
+            console.log(`💰 Total Token Usage: ${totalTokens} (Input: ${aiResponse.inputTokens}, Output: ${aiResponse.outputTokens})`);
+        }
+
+        return {
+            content: aiResponse.content,
+            inputTokens: aiResponse.inputTokens || 0,
+            outputTokens: aiResponse.outputTokens || 0
+        };
     }
 
     /**
@@ -444,11 +455,10 @@ async function run() {
         }
 
         // 4. 生成 AI 分析
-        const reviewContent = await main.generateAIReview(aiProvider, inputs, changes);
+        const reviewResult = await main.generateAIReview(aiProvider, inputs, changes);
 
         // 5. 新增評論
-        await main.addReviewComment(devOpsService, connection, reviewContent, inputs.modelName);
-
+        await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.modelName);
         console.log('🎉 AI Pull Request Code Review completed successfully!');
         tl.setResult(tl.TaskResult.Succeeded, 'AI Code Review completed successfully');
 

@@ -74,4 +74,17 @@ export class ClaudeService extends BaseHttpAIService {
     protected extractContent(response: any): string {
         return response.data.content?.[0]?.text || 'No response generated';
     }
+
+    /**
+     * 提取 Claude API 回應中的 Token 使用情況
+     * @param response - API 回應物件
+     * @returns { inputTokens, outputTokens }
+     */
+    protected extractTokenUsage(response: any): { inputTokens?: number; outputTokens?: number } {
+        const usage = response.data.usage;
+        return {
+            inputTokens: usage?.input_tokens,
+            outputTokens: usage?.output_tokens
+        };
+    }
 }

@@ -72,8 +72,9 @@ Below are all input parameters supported by this Task:
 | Temperature | string | No | 1.0 | Temperature setting for the AI model, controlling randomness. |
 | File Extensions to Include | string | No | (empty) | Comma-separated list of file extensions to include in the Code Review analysis. If empty, all non-binary files are included by default. |
 | Binary File Extensions to Exclude | string | No | (empty) | Comma-separated list of binary file extensions to exclude from the Code Review analysis. If left empty, the task will automatically exclude common binary file types by default (for example: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .md, .markdown, .txt, .gitignore). If you provide a value, your list will be used instead of these defaults. |
-| Enable AI Throttle Mode | boolean | No | true | When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review. |
-| Show Review Content | true | No | false | When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes. |
+| Enable AI Throttle Mode | boolean | No | true | When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review. **Note**: When this option is disabled, "Enable Incremental Diff Mode" will have no effect. |
+| Enable Incremental Diff Mode | boolean | No | false | When enabled, only the changes from the latest push (most recent iteration) are reviewed. When disabled, all PR changes from all iterations are reviewed. **Important**: This option only takes effect when "Enable AI Throttle Mode" is enabled. When throttle mode is disabled, this setting is ignored. |
+| Show Review Content | boolean | No | false | When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes. |
 
 
 ## 🎉 Result display

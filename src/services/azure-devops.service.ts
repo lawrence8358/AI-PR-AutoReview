@@ -103,6 +103,7 @@ export class AzureDevOpsService extends BaseDevOpsService {
      * @param fileExtensions - 要過濾的副檔名列表，例如 ['.ts', '.js']，若為空則檢查所有非二進位檔案
      * @param binaryExtensions - 要排除的二進位檔案副檔名列表
      * @param enableThrottleMode - 啟用節流模式（預設 true，僅送差異；false 則送整個檔案）
+     * @param enableIncrementalDiff - 啟用增量 Diff 模式（預設 false，檢查所有 PR 變更；true 則僅檢查最後一次推送的變更）
      * @returns 變更內容的詳細資訊，包含檔案路徑和變更內容
      */
     public async getPullRequestChanges(
@@ -111,7 +112,8 @@ export class AzureDevOpsService extends BaseDevOpsService {
         pullRequestId: number,
         fileExtensions: string[] = [],
         binaryExtensions: string[] = [],
-        enableThrottleMode: boolean = true
+        enableThrottleMode: boolean = true,
+        enableIncrementalDiff: boolean = false
     ): Promise<FileChangeDetail[] | null> {
         // 確保二進位檔案副檔名有預設值
         binaryExtensions = this.ensureBinaryExtensions(binaryExtensions);
@@ -126,6 +128,10 @@ export class AzureDevOpsService extends BaseDevOpsService {
             enableThrottleMode
         );
 
+        if (enableIncrementalDiff) {
+            console.log('🔄 Incremental Diff Mode: Enabled - Only the latest push changes will be reviewed');
+        }
+
         const gitApi = await this.getGitApi();
 
         // 驗證 PR 變更
@@ -133,7 +139,8 @@ export class AzureDevOpsService extends BaseDevOpsService {
             gitApi,
             projectName,
             repositoryId,
-            pullRequestId
+            pullRequestId,
+            enableIncrementalDiff
         );
 
         if (!verificationResult) {
@@ -141,7 +148,7 @@ export class AzureDevOpsService extends BaseDevOpsService {
             return null;
         }
 
-        const { changes } = verificationResult;
+        const { changes, previousChanges } = verificationResult;
 
         // 過濾變更檔案
         const filteredChanges = this.filterChangeEntries(
@@ -161,7 +168,9 @@ export class AzureDevOpsService extends BaseDevOpsService {
             gitApi,
             repositoryId,
             projectName,
-            enableThrottleMode
+            enableThrottleMode,
+            enableIncrementalDiff,
+            previousChanges
         );
 
         this.logRetrievingChangesComplete(changeDetails.length, enableThrottleMode);
@@ -183,14 +192,16 @@ export class AzureDevOpsService extends BaseDevOpsService {
      * @param projectName - 專案 ID
      * @param repositoryId - Repository ID
      * @param pullRequestId - Pull Request ID
+     * @param enableIncrementalDiff - 啟用增量 Diff 模式（僅檢查最後一次推送的變更）
      * @returns PR 變更資訊，若檢查失敗則返回 null
      */
     private async verifyPullRequestChanges(
         gitApi: IGitApi,
         projectName: string,
         repositoryId: string,
-        pullRequestId: number
-    ): Promise<{ changes: GitPullRequestIterationChanges } | null> {
+        pullRequestId: number,
+        enableIncrementalDiff: boolean = false
+    ): Promise<{ changes: GitPullRequestIterationChanges; previousChanges?: GitPullRequestIterationChanges["changeEntries"] } | null> {
         // 取得 Pull Request 資訊
         const pr = await gitApi.getPullRequest(repositoryId, pullRequestId, projectName);
         if (!pr || !pr.lastMergeSourceCommit || !pr.lastMergeTargetCommit) {
@@ -204,26 +215,151 @@ export class AzureDevOpsService extends BaseDevOpsService {
             return null;
         }
 
-        // 取得最新的 iteration
-        const latestIteration = iterations[iterations.length - 1];
-        if (!latestIteration || latestIteration.id === undefined) {
-            console.log('❗ Unable to get latest PR iteration');
+
+        // 根據增量 diff 模式選擇要審查的 iteration
+        let targetIteration;
+        let previousIteration;
+
+        if (enableIncrementalDiff && iterations.length > 1) {
+            // 增量模式：只獲取最後一次推送的變更
+            // 獲取最後一個 iteration 與前一個 iteration 之間的變更
+            targetIteration = iterations[iterations.length - 1];
+            previousIteration = iterations[iterations.length - 2];
+            console.log(`📍 Incremental Diff Mode: Enabled - Only reviewing changes from the latest push (comparing iteration ${targetIteration.id} against iteration ${previousIteration.id})`);
+        } else if (enableIncrementalDiff && iterations.length === 1) {
+            // 增量模式但只有 1 個 iteration：此時增量 diff 等同於全量 diff
+            targetIteration = iterations[0];
+            console.log(`📍 Incremental Diff Mode: Only 1 iteration found - reviewing all PR changes (equivalent to full diff)`);
+        } else {
+            // 全量模式：獲取 PR 相對於基礎分支的所有變更
+            // 使用最後一個 iteration（它代表與基礎分支的完整差異）
+            targetIteration = iterations[iterations.length - 1];
+            console.log(`📍 Full Diff Mode: Reviewing all PR changes from base branch`);
+        }
+
+        if (!targetIteration || targetIteration.id === undefined) {
+            console.log('❗ Unable to get target PR iteration');
             return null;
         }
 
         // 取得 PR 的變更檔案清單
-        const changes = await gitApi.getPullRequestIterationChanges(
+        let changes = await gitApi.getPullRequestIterationChanges(
             repositoryId,
             pullRequestId,
-            latestIteration.id
+            targetIteration.id
         );
+
+        let previousChanges: GitPullRequestIterationChanges["changeEntries"] | undefined;
+
+        // 如果在增量模式下，需要計算只包含最新 push 的變更
+        if (enableIncrementalDiff && previousIteration && previousIteration.id !== undefined) {
+            // 獲取前一個 iteration 的變更以進行比較
+            const previousIterationChanges = await gitApi.getPullRequestIterationChanges(
+                repositoryId,
+                pullRequestId,
+                previousIteration.id
+            );
+
+            // 計算增量變更（只保留在最新 iteration 中新增或修改的檔案）
+            changes = this.calculateIncrementalChanges(changes, previousIterationChanges);
+            previousChanges = previousIterationChanges.changeEntries;
+            console.log(`ℹ️ Only changes from the latest push will be included`);
+        }
 
         if (!changes.changeEntries || changes.changeEntries.length === 0) {
             console.log('❗ No code changes detected');
             return null;
         }
 
-        return { changes };
+        return { changes, previousChanges };
+    }
+
+    /**
+     * 計算增量變更（只保留最新 push 中的變更）
+     * @param currentChanges - 目前 iteration 的變更
+     * @param previousChanges - 前一個 iteration 的變更
+     * @returns 僅包含最新 push 變更的 GitPullRequestIterationChanges
+     */
+    private calculateIncrementalChanges(
+        currentChanges: GitPullRequestIterationChanges,
+        previousChanges: GitPullRequestIterationChanges
+    ): GitPullRequestIterationChanges {
+        if (!currentChanges.changeEntries) {
+            return currentChanges;
+        }
+
+        const previousPaths = new Set(
+            previousChanges.changeEntries?.map(e => e.item?.path) || []
+        );
+
+        const incrementalEntries = currentChanges.changeEntries.filter(change => {
+            const currentPath = change.item?.path;
+
+            // 保留在前一個 iteration 中不存在的檔案（新增的）
+            if (!previousPaths.has(currentPath)) {
+                return true;
+            }
+
+            // 對於存在的檔案，我們需要確定它是否在最新 push 中被修改
+            // 由於 iteration 中的 objectId 會改變，我們可以通過比較來判斷
+            const previousChange = previousChanges.changeEntries?.find(
+                e => e.item?.path === currentPath
+            );
+
+            // 如果 objectId 不同，說明檔案在最新 push 中被修改了
+            if (previousChange && change.item?.objectId !== previousChange.item?.objectId) {
+                return true;
+            }
+
+            return false;
+        });
+
+        return {
+            ...currentChanges,
+            changeEntries: incrementalEntries
+        };
+    }
+
+    /**
+     * 從差異內容中提取只包含新增和修改的行
+     * @param diffContent - 完整的 diff 內容
+     * @returns 只包含新增和修改行的 diff
+     */
+    private extractIncrementalDiffLines(diffContent: string): string {
+        if (!diffContent) return '';
+
+        const lines = diffContent.split('\n');
+        const incrementalLines: string[] = [];
+        let currentSection = '';
+
+        for (const line of lines) {
+            // 保留 diff header 行
+            if (line.startsWith('diff --git') ||
+                line.startsWith('index ') ||
+                line.startsWith('---') ||
+                line.startsWith('+++') ||
+                line.startsWith('@@')) {
+                incrementalLines.push(line);
+                currentSection = line;
+            }
+            // 保留新增行（+開頭，但不是 +++）
+            else if (line.startsWith('+') && !line.startsWith('+++')) {
+                incrementalLines.push(line);
+            }
+            // 保留修改行前後的上下文（-開頭的舊行，但不是 ---）
+            else if (line.startsWith('-') && !line.startsWith('---')) {
+                incrementalLines.push(line);
+            }
+            // 保留一些上下文行（空行或普通行，用於理解修改的上下文）
+            else if (line.startsWith(' ') || line === '') {
+                // 只在有新增或修改行附近時才保留上下文
+                if (incrementalLines.length > 0) {
+                    incrementalLines.push(line);
+                }
+            }
+        }
+
+        return incrementalLines.join('\n');
     }
 
     /**
@@ -268,6 +404,8 @@ export class AzureDevOpsService extends BaseDevOpsService {
      * @param repositoryId - Repository ID
      * @param projectName - 專案 ID
      * @param enableThrottleMode - 啟用節流模式（預設 true，僅送差異；false 則送整個檔案）
+     * @param enableIncrementalDiff - 啟用增量 Diff 模式（預設 false，檢查所有 PR 變更；true 則僅檢查最後一次推送的變更）
+     * @param previousIterationChanges - 前一個 iteration 的變更（用於增量模式）
      * @returns 檔案變更的詳細資訊，包含檔案路徑和差異內容
      */
     private async getChangeDetails(
@@ -275,7 +413,9 @@ export class AzureDevOpsService extends BaseDevOpsService {
         gitApi: IGitApi,
         repositoryId: string,
         projectName: string,
-        enableThrottleMode: boolean = true
+        enableThrottleMode: boolean = true,
+        enableIncrementalDiff: boolean = false,
+        previousIterationChanges?: GitPullRequestIterationChanges["changeEntries"]
     ): Promise<FileChangeDetail[]> {
         if (!changes) return [];
 
@@ -305,15 +445,42 @@ export class AzureDevOpsService extends BaseDevOpsService {
                         }
 
                         // 類型如果是編輯
-                        if (change.changeType === VersionControlChangeType.Edit && change.item.originalObjectId) {
+                        if (change.changeType === VersionControlChangeType.Edit) {
                             if (enableThrottleMode) {
-                                const targetContent = await this.getFileContent(
-                                    gitApi,
-                                    repositoryId,
-                                    projectName,
-                                    change.item.originalObjectId
-                                );
-                                content = await this.getDiffContent(sourceContent, targetContent);
+                                let targetContent = '';
+
+                                // 在增量模式下，從前一個 iteration 獲取舊版本
+                                // 否則使用 originalObjectId（與基礎分支的比較）
+                                if (enableIncrementalDiff && previousIterationChanges) {
+                                    const previousChange = previousIterationChanges.find(
+                                        c => c.item?.path === filePath
+                                    );
+                                    if (previousChange && previousChange.item?.objectId) {
+                                        // 從前一個 iteration 獲取檔案版本
+                                        targetContent = await this.getFileContent(
+                                            gitApi,
+                                            repositoryId,
+                                            projectName,
+                                            previousChange.item.objectId
+                                        );
+                                    }
+                                } else if (change.item.originalObjectId) {
+                                    // 使用原始版本（通常是基礎分支）
+                                    targetContent = await this.getFileContent(
+                                        gitApi,
+                                        repositoryId,
+                                        projectName,
+                                        change.item.originalObjectId
+                                    );
+                                }
+
+                                if (targetContent) {
+                                    content = await this.getDiffContent(sourceContent, targetContent);
+                                } else {
+                                    // 如果無法獲取目標內容，顯示整個源內容
+                                    content = this.formatAddedFileContent(sourceContent);
+                                }
+
                                 this.logProcessEditedFile(filePath, true);
                             } else {
                                 content = sourceContent;

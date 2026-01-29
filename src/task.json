@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 3,
-        "Patch": 3
+        "Patch": 4
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -182,6 +182,14 @@
             "helpMarkDown": "Comma-separated list of binary file extensions to exclude from the code review analysis. Default includes: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv"
         },
         {
+            "name": "inputShowReviewContent",
+            "type": "boolean",
+            "label": "Show Review Content",
+            "defaultValue": "true",
+            "required": false,
+            "helpMarkDown": "When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes."
+        },
+        {
             "name": "inputEnableThrottleMode",
             "type": "boolean",
             "label": "Enable AI Throttle Mode",
@@ -190,12 +198,12 @@
             "helpMarkDown": "When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review."
         },
         {
-            "name": "inputShowReviewContent",
+            "name": "inputEnableIncrementalDiff",
             "type": "boolean",
-            "label": "Show Review Content",
-            "defaultValue": "true",
+            "label": "Enable Incremental Diff",
+            "defaultValue": "false",
             "required": false,
-            "helpMarkDown": "When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes."
+            "helpMarkDown": "When enabled, only the latest push changes are reviewed instead of all PR changes. Useful for repeated reviews on iteratively updated PRs. Expected savings: 30-90% of tokens depending on number of pushes."
         }
     ],
     "execution": {

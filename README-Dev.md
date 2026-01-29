@@ -49,14 +49,15 @@ d:\Project\AiPrCodeReview
 ``` 
 
 
-## 主要 Scripts 
+## 主要 Scripts
 - 使用 `npm run build` 執行完整建置流程（同步版本號、型別檢查、打包、複製檔案）。
 - 使用 `npm run packaging:package` 建置 Marketplace 套件。
 - `devscripts/.env`，此環境變數主要用於本地開發測試。
-- `devscripts` 內有三個測試腳本
-  + `npm run devscripts:ai`
-  + `npm run devscripts:pr-changes`
-  + `npm run devscripts:pr-comment`
+- `devscripts` 內有多個測試腳本和工具
+  + `npm run devscripts:ai` - 測試 AI 服務
+  + `npm run devscripts:pr-changes` - 測試取得 PR 變更
+  + `npm run devscripts:pr-comment` - 測試新增 PR 評論
+  + `npx ts-node DEVSCRIPTS/test-pr-review.ts` - 完整 PR 審查測試工具（詳見下方說明）
 - 本地開發模擬 pipeline 執行，請修改好 `devscripts/.env` 後，執行 `npm run debug`。
 - 執行單元測試：`npm test` (使用 `mocha` 和 `ts-node` 執行 `test/**/*.spec.ts`)。
 
@@ -73,7 +74,96 @@ d:\Project\AiPrCodeReview
 - `npm run devscripts:pr-comment`：執行 DevOps API 新增 PR 評論（需有效的 DevOps env 設定）。
 - `npm run packaging:install-tool`：安裝 `tfx-cli`（全域）以便打包與上傳。
 - `npm run packaging:package`：建立 VSIX 包（使用 `vss-extension.json`）。
- 
+
+### test-pr-review.ts 測試工具
+
+`test-pr-review.ts` 是一個完整的 PR 審查測試工具，用於本地快速測試完整的 PR 審查流程（包括取得 PR 變更和調用 AI 服務）。
+
+**使用方式**：
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts [參數]
+```
+
+**必要參數**：
+- `--provider <azure|github>` - DevOps 提供者（Azure DevOps 或 GitHub）
+- `--pr <PR_ID>` - Pull Request ID
+
+**Azure DevOps 參數**（當 provider=azure 時必填）：
+- `--org <URL>` - Organization URL（例如：https://dev.azure.com/yourorg）
+- `--project <PROJECT>` - 專案名稱
+- `--repo-id <ID>` - Repository ID
+- `--token <TOKEN>` - Personal Access Token（或使用環境變數 SYSTEM_ACCESSTOKEN）
+
+**GitHub 參數**（當 provider=github 時必填）：
+- `--owner <USER>` - Repository owner
+- `--repo <REPO>` - Repository name
+- `--token <TOKEN>` - GitHub token
+
+**AI 提供者參數**：
+- `--ai <PROVIDER>` - AI 提供者：'claude', 'openai', 'grok', 'google'（預設：claude）
+- `--model <MODEL_NAME>` - 模型名稱（例如：claude-haiku-4-5、gpt-4o、gemini-2.5-flash）
+- `--key <API_KEY>` - API Key（或使用環境變數）
+
+**功能開關參數**：
+- `--throttle <true|false>` - 啟用節流模式（預設：true，僅送差異）
+- `--incremental <true|false>` - 啟用增量 Diff 模式（預設：false）
+- `--verbose <true|false>` - 顯示詳細日誌（預設：true）
+
+**使用範例**：
+
+1. **Azure DevOps + Claude，啟用增量 Diff**
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts \
+  --provider azure \
+  --pr 16 \
+  --org https://dev.azure.com/myorg \
+  --project MyProject \
+  --repo-id 9efec7a7-ef7f-4c2b-8bb8-e3e4f9c2e0ca \
+  --ai claude \
+  --model claude-haiku-4-5 \
+  --throttle true \
+  --incremental true
+```
+
+2. **Azure DevOps + Google Gemini，全量 Diff**
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts \
+  --provider azure \
+  --pr 20 \
+  --org https://dev.azure.com/myorg \
+  --project MyProject \
+  --repo-id 9efec7a7-ef7f-4c2b-8bb8-e3e4f9c2e0ca \
+  --ai google \
+  --model gemini-2.5-flash \
+  --throttle true \
+  --incremental false
+```
+
+3. **GitHub + OpenAI，禁用節流模式**
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts \
+  --provider github \
+  --pr 42 \
+  --owner myuser \
+  --repo myrepo \
+  --ai openai \
+  --model gpt-4o \
+  --throttle false
+```
+
+**輸出說明**：
+- 顯示當前配置設定
+- 取得 PR 變更檔案（顯示檔案數量、檔案大小、Token 數量）
+- 調用 AI 服務進行審查
+- 印出 AI 的審查結果
+
+**常見用途**：
+- 測試特定 PR 的增量 Diff 功能
+- 驗證 AI 審查結果品質
+- 測試不同 AI 提供者的表現
+- 調試 Token 計算和節流模式設定
+
+
 
 ## devscripts/.env：用途與本機測試
 
@@ -101,6 +191,7 @@ d:\Project\AiPrCodeReview
 | FileExtensions | 選用 | .cs,.ts,.js | 要納入的檔案副檔名（逗號分隔） |
 | BinaryExtensions | 選用 | .exe,.dll,.jpg | 要排除的二進位檔副檔名 |
 | EnableThrottleMode | 選用 | true | 啟用 AI 節流模式（true：僅送差異；false：送整個檔案） |
+| EnableIncrementalDiff | 選用 | false | 啟用增量 Diff 模式（true：僅審查最新 push；false：審查所有 PR 變更）。**注意**：只有當 `EnableThrottleMode` 為 `true` 時此選項才有效 |
 | ShowReviewContent | 選用 | false | 顯示審核內容（true：印出送給 AI 的程式碼內容、System Instruction、Prompt 以及 AI 回應；false：不顯示） |
 
 .env 範例說明（切勿提交含真實金鑰的檔案）：
@@ -131,10 +222,38 @@ BinaryExtensions=.exe,.dll,.jpg,.png
 
 # Other settings
 EnableThrottleMode=true
+EnableIncrementalDiff=false
 ShowReviewContent=false
 ```
 
 注意：`src/index.ts` 在 debug 模式會從 `process.env` 讀取（而非 Azure Pipelines 的變數）。
+
+### 環境變數說明
+
+#### EnableThrottleMode（節流模式）
+- **預設值**：`true`（啟用）
+- **說明**：控制是否僅送程式碼差異給 AI，或送整個檔案內容
+  - `true`：節流模式啟用，僅送程式碼 diff
+  - `false`：關閉節流模式，送整個新檔案內容
+
+#### EnableIncrementalDiff（增量 Diff 模式）
+- **預設值**：`false`（停用）
+- **重要提示**：此選項只有在 `EnableThrottleMode=true` 時才有效
+- **說明**：控制是否只審查最新 push 的變更，或審查所有 iteration 的變更
+  - `true`：增量模式，僅審查最新推送的變更
+  - `false`：全量模式，審查所有 PR 迭代的變更
+
+**範例場景**：
+- PR 有 3 次推送（3 個 iterations）
+- Iteration 1：新增檔案 A
+- Iteration 2：在檔案 A 中新增方法 B
+- Iteration 3：在方法 B 中新增註釋
+
+**不同模式的結果**：
+- `EnableThrottleMode=true, EnableIncrementalDiff=false`：審查所有變更（A 新增 + 方法 B 新增 + 註釋新增）
+- `EnableThrottleMode=true, EnableIncrementalDiff=true`：只審查最新變更（只有註釋新增）
+- `EnableThrottleMode=false, EnableIncrementalDiff=false`：送整個檔案內容給 AI（包含所有內容）
+- `EnableThrottleMode=false, EnableIncrementalDiff=true`：無作用，等同於 `false, false`（送整個檔案內容）
 
 
 ## 快速開始（PowerShell 範例）
@@ -161,6 +280,88 @@ npm run devscripts:ai
 npm run devscripts:pr-changes
 npm run devscripts:pr-comment
 ```
+
+
+## 增量 Diff 模式實作詳解
+
+### 核心概念
+
+增量 Diff 模式用於處理多次推送（iterations）的 PR 場景。Azure DevOps 中的 PR iteration 代表每次 `git push` 的操作，每次推送都會產生一個新的 iteration。
+
+### 實作位置
+
+主要實作在 `src/services/azure-devops.service.ts` 中：
+
+1. **方法：`verifyPullRequestChanges()`** - 取得 PR 變更
+   - 根據 `enableIncrementalDiff` 參數決定要比較的 iteration
+   - 啟用時：取得最後一個 iteration 和前一個 iteration，進行比較
+   - 禁用時：取得最後一個 iteration（與基礎分支的完整差異）
+
+2. **方法：`calculateIncrementalChanges()`** - 計算增量變更
+   - 透過比較 objectId 判斷檔案是否在最新 iteration 中被修改
+   - 只保留新增或修改的檔案
+
+3. **方法：`getChangeDetails()`** - 取得檔案變更詳情
+   - 核心修改：當啟用增量模式時，從 **前一個 iteration** 獲取舊版本檔案
+   - 而非使用基礎分支版本，這樣產生的 diff 才是真正的增量變更
+
+### 工作流程
+
+```
+啟用增量 Diff 時的流程：
+PR 有 3 個 iterations （i1, i2, i3）
+
+1. verifyPullRequestChanges()：
+   └─ 比較 iteration 3 vs iteration 2
+   └─ 取出在 iteration 3 中有變更的檔案清單
+
+2. calculateIncrementalChanges()：
+   └─ 過濾檔案：只保留 objectId 不同的檔案
+   └─ 輸出：只有在 i3 中修改過的檔案
+
+3. getChangeDetails()：
+   ├─ 對於每個修改的檔案
+   ├─ 取得 i3 版本（sourceContent）
+   ├─ 從前一個 iteration（i2）取得舊版本（targetContent）
+   └─ 生成 diff：i3 版本 vs i2 版本
+
+結果：diff 只顯示 i3 中實際修改的內容
+```
+
+禁用增量 Diff 時的流程：
+
+```
+禁用時的流程：
+PR 有 3 個 iterations
+
+1. verifyPullRequestChanges()：
+   └─ 取得 iteration 3 的所有變更（最終狀態）
+
+2. calculateIncrementalChanges()：
+   └─ 跳過此步驟
+
+3. getChangeDetails()：
+   ├─ 對於每個檔案
+   ├─ 取得 i3 版本（sourceContent）
+   ├─ 取得基礎分支版本（targetContent 來自 originalObjectId）
+   └─ 生成 diff：i3 版本 vs 基礎分支版本
+
+結果：diff 顯示所有從基礎分支開始的所有變更（包含 i1, i2, i3）
+```
+
+### 重要特性
+
+1. **依賴節流模式**：增量 Diff 只有在 `enableThrottleMode=true` 時才有效
+   - 節流模式負責決定是送 diff 還是整個檔案
+   - 增量模式負責決定 diff 的範圍
+
+2. **自動回退**：PR 只有 1 個 iteration 時
+   - 增量模式自動變成全量模式
+   - 因為沒有「前一個」iteration 可以比較
+
+3. **Token 優化**：結合使用時效果最佳
+   - `enableThrottleMode=true` + `enableIncrementalDiff=true`
+   - 最少的內容 → 最少的 token 消耗 → 最低成本
 
 
 ## 打包與上傳 Marketplace（SOP）

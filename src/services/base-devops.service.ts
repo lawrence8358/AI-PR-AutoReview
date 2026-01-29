@@ -72,6 +72,7 @@ export abstract class BaseDevOpsService implements DevOpsService {
      * @param fileExtensions - 要過濾的副檔名列表
      * @param binaryExtensions - 要排除的二進位檔案副檔名列表
      * @param enableThrottleMode - 啟用節流模式
+     * @param enableIncrementalDiff - 啟用增量 Diff 模式（僅檢查最後一次推送的變更）
      * @returns 變更內容的詳細資訊陣列
      */
     public abstract getPullRequestChanges(
@@ -80,7 +81,8 @@ export abstract class BaseDevOpsService implements DevOpsService {
         pullRequestId: number,
         fileExtensions?: string[],
         binaryExtensions?: string[],
-        enableThrottleMode?: boolean
+        enableThrottleMode?: boolean,
+        enableIncrementalDiff?: boolean
     ): Promise<FileChangeDetail[] | null>;
 
     /**
@@ -217,7 +219,8 @@ export abstract class BaseDevOpsService implements DevOpsService {
     }
 
     /**
-     * 處理 git diff 或 patch 輸出結果
+     * 處理 git diff 或 patch 輸出結果（已優化以減少 Token 消耗）
+     * 移除空白行、註釋和多餘的上下文
      * @param output - git diff 或 patch 命令的輸出內容
      * @returns 處理後的差異內容，只包含變更行和區塊標記
      */
@@ -233,6 +236,15 @@ export abstract class BaseDevOpsService implements DevOpsService {
                 line.startsWith('-') ||
                 line.startsWith('@@')
             )
+            // 移除空白行和只有空白的行
+            .filter(line => line.trim().length > 1 || line.startsWith('@@'))
+            // 移除開頭和結尾的空白
+            .map(line => {
+                if (line.startsWith('+') || line.startsWith('-')) {
+                    return line.substring(0, 1) + line.substring(1).trim();
+                }
+                return line;
+            })
             .join('\n');
     }
 

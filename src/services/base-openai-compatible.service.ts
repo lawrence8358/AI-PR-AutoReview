@@ -56,7 +56,17 @@ export abstract class BaseOpenAICompatibleService extends BaseAIService {
 
             console.log('✅ Response generated successfully');
 
-            return { content };
+            // 取得 Token 使用情況
+            const tokenUsage = this.extractTokenUsage(response);
+            if (tokenUsage.inputTokens || tokenUsage.outputTokens) {
+                console.log(`📊 Token Usage - Input: ${tokenUsage.inputTokens ?? 'N/A'}, Output: ${tokenUsage.outputTokens ?? 'N/A'}`);
+            }
+
+            return {
+                content,
+                inputTokens: tokenUsage.inputTokens,
+                outputTokens: tokenUsage.outputTokens
+            };
 
         } catch (error: any) {
             const message = JSON.stringify(error.response?.data || error.message);
@@ -102,6 +112,16 @@ export abstract class BaseOpenAICompatibleService extends BaseAIService {
 
         return requestOptions;
     }
+
+    /**
+     * 從 OpenAI API 回應中提取 Token 使用情況
+     * @param response - OpenAI API 回應
+     * @returns Token 使用情況 { inputTokens, outputTokens }
+     */
+    protected extractTokenUsage(response: any): { inputTokens?: number; outputTokens?: number } {
+        return {
+            inputTokens: response.usage?.prompt_tokens,
+            outputTokens: response.usage?.completion_tokens
+        };
+    }
 }
-
-

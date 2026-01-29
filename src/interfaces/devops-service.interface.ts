@@ -50,6 +50,7 @@ export interface DevOpsService {
      * @param fileExtensions - 要過濾的副檔名列表
      * @param binaryExtensions - 要排除的二進位檔案副檔名列表
      * @param enableThrottleMode - 啟用節流模式
+     * @param enableIncrementalDiff - 啟用增量 Diff 模式（僅檢查最後一次推送的變更）
      * @returns 變更內容的詳細資訊陣列，若無變更則返回 null
      */
     getPullRequestChanges(
@@ -58,6 +59,7 @@ export interface DevOpsService {
         pullRequestId: number,
         fileExtensions?: string[],
         binaryExtensions?: string[],
-        enableThrottleMode?: boolean
+        enableThrottleMode?: boolean,
+        enableIncrementalDiff?: boolean
     ): Promise<FileChangeDetail[] | null>;
 }

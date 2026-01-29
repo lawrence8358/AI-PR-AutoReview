@@ -53,12 +53,41 @@ export abstract class BaseHttpAIService extends BaseAIService {
 
             console.log('✅ Response generated successfully');
 
-            return { content };
+            // 取得 Token 使用情況（如果有實作）
+            const tokenUsage = this.getTokenUsage(response);
+            if (tokenUsage.inputTokens || tokenUsage.outputTokens) {
+                console.log(`📊 Token Usage - Input: ${tokenUsage.inputTokens ?? 'N/A'}, Output: ${tokenUsage.outputTokens ?? 'N/A'}`);
+            }
+
+            return {
+                content,
+                inputTokens: tokenUsage.inputTokens,
+                outputTokens: tokenUsage.outputTokens
+            };
 
         } catch (error: any) {
             const message = JSON.stringify(error.response?.data || error.message);
             throw new Error(`⛔ ${this.getServiceName()} service error: ` + message);
         }
+    }
+
+    /**
+     * 提取回應中的 Token 使用情況（由子類別選擇性實作）
+     * 預設實現為空，子類別應該根據 API 回應格式實作
+     * @param response - API 回應物件
+     * @returns { inputTokens, outputTokens }
+     */
+    protected extractTokenUsage(response: any): { inputTokens?: number; outputTokens?: number } {
+        return {};
+    }
+
+    /**
+     * 由 generateComment 呼叫，子類別應該覆寫 extractTokenUsage 方法
+     * @param response - API 回應物件
+     * @returns { inputTokens, outputTokens }
+     */
+    protected getTokenUsage(response: any): { inputTokens?: number; outputTokens?: number } {
+        return this.extractTokenUsage(response);
     }
 
     /**
