@@ -9,14 +9,15 @@ import { DevOpsService } from './interfaces/devops-service.interface';
 
 
 const DEFAULT_SYSTEM_INSTRUCTION = `You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.
-1. Begin with a summary conclusion of the analysis, for example: AI Review Status: ✔️ Recommend Approval, ❌ Recommend Rejection, ❗ Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.
+1. Begin with a summary conclusion of the analysis, for example: AI Review Status: 🟢 Recommend Approval, 🔴 Recommend Rejection, 🟡 Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.
 2. Do not include any content unrelated to the code review.
-3. Use English (en-US) for the review result. Each issue should be listed as a bullet point with concise explanations.
+3. Use English (en-US) for the review result. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].
 4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.
 5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.
 6. Skip analysis of images, binary files, or other non-code files.
 7. Skip analysis of deleted files.
-8. Use Markdown format for the reply.`;
+8. Use Markdown format for the reply.
+9. Assume the provided code snippets are part of a larger, valid codebase. Do not report errors regarding "unresolved symbols," "missing definitions," or "reference issues" that may exist outside the provided diff. Focus your analysis strictly on the logic and quality of the changes themselves.`;
 
 const ALLOWED_FILE_EXTENSIONS = ['.md', '.txt', '.json', '.yaml', '.yml', '.xml', '.html'];
 
@@ -199,6 +200,16 @@ export class Main {
         const enableThrottleMode = this.getInputValue('EnableThrottleMode', 'inputEnableThrottleMode', false, 'true').toLowerCase() === 'true';
         const showReviewContent = this.getInputValue('ShowReviewContent', 'inputShowReviewContent', false, 'false').toLowerCase() === 'true';
         const enableIncrementalDiff = this.getInputValue('EnableIncrementalDiff', 'inputEnableIncrementalDiff', false, 'false').toLowerCase() === 'true';
+        
+        // 取得 GitHub Copilot Timeout (僅當 AI Provider 為 GitHubCopilot 時)
+        let timeout: number | undefined = undefined;
+        if (inputAiProvider.toLowerCase() === 'githubcopilot') {
+            const timeoutStr = this.getInputValue('GitHubCopilotTimeout', 'inputGitHubCopilotTimeout', false, '120000');
+            if (timeoutStr && timeoutStr.trim() !== '') {
+                const parsedTimeout = parseInt(timeoutStr);
+                timeout = isNaN(parsedTimeout) ? undefined : parsedTimeout;
+            }
+        }
 
         // 解析副檔名列表
         const fileExtensions = fileExtensionsStr
@@ -214,6 +225,7 @@ export class Main {
             modelName,
             modelKey,
             serverAddress,
+            timeout,
             systemInstruction,
             promptTemplate,
             maxOutputTokens,
@@ -401,16 +413,18 @@ export class Main {
      * 將建議內容新增為 PR 的評論
      * @param devOpsService - DevOps 服務實例
      * @param connection - Azure DevOps 連線資訊
-     * @param reviewContent - AI 分析結果內容
+     * @param reviewContent - AI 分析結果內容  
+     * @param providerName - AI 提供者名稱
      * @param aiModelName - 使用的 AI 模型名稱
      */
     async addReviewComment(
         devOpsService: DevOpsService,
         connection: DevOpsConnection,
-        reviewContent: string,
+        reviewContent: string,  
+        providerName: string,
         aiModelName: string
     ) {
-        const commentHeader = `🤖 AI Code Review (${aiModelName})`;
+        const commentHeader = `🤖 AI Code Review (${providerName} - ${aiModelName})`;
         await devOpsService.addPullRequestComment(
             connection.projectName,
             connection.repositoryId,
@@ -445,12 +459,14 @@ async function run() {
 
         // 2. 初始化服務
         const aiProvider = new AIProviderService();
-        aiProvider.registerService(inputs.aiProvider, {
+        const config = {
             apiKey: inputs.modelKey,
             modelName: inputs.modelName,
-            serverAddress: inputs.serverAddress
-        });
-
+            serverAddress: inputs.serverAddress,
+            timeout: inputs.timeout
+        }; 
+        aiProvider.registerService(inputs.aiProvider, config);
+        
         const devOpsProvider = new DevOpsProviderService();
         const provider = DevOpsProviderService.detectProvider(connection.collectionUri);
         devOpsProvider.registerService(provider, {
@@ -471,7 +487,13 @@ async function run() {
         const reviewResult = await main.generateAIReview(aiProvider, inputs, changes);
 
         // 5. 新增評論
-        await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.modelName);
+        await main.addReviewComment(
+            devOpsService, 
+            connection, 
+            reviewResult.content, 
+            inputs.aiProvider,     
+            inputs.modelName
+        );
         console.log('🎉 AI Pull Request Code Review completed successfully!');
         tl.setResult(tl.TaskResult.Succeeded, 'AI Code Review completed successfully');
 

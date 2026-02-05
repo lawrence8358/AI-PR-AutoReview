@@ -48,4 +48,6 @@ export interface AIServiceConfig {
     apiEndpoint?: string;
     /** Server 位址 (選用，用於 GitHub Copilot) */
     serverAddress?: string;
+    /** 請求超時時間 (選用，用於 GitHub Copilot，單位：毫秒) */
+    timeout?: number;
 }

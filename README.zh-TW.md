@@ -122,7 +122,8 @@
 | Claude Model Name | string | 條件式 | claude-haiku-4-5 | 輸入 Claude 的模型名稱（例如 claude-haiku-4-5），選擇 Claude 時必填。 |
 | Claude API Key | string | 條件式 | 無 | 輸入 Claude (Anthropic) 的 API Key，選擇 Claude 時必填。 |
 | GitHub Copilot CLI Server Address | string | 否 | 無 | (選填) 輸入 GitHub Copilot CLI Server 位址（IP 或 Domain + Port）。範例：192.168.1.100:8080 或 copilot.internal.company.com:8080。若未填寫，則使用 Build Agent 內的 GitHub Copilot CLI。選擇 GitHub Copilot + 內部網路時顯示。 |
-| Model Name (GitHub Copilot) | string | 否 | gpt-4o | 輸入 GitHub Copilot 使用的模型名稱。選填，預設為 gpt-4o。選擇 GitHub Copilot + 內部網路時顯示。 |
+| GitHub Copilot Model Name | string | 否 | gpt-4o | 輸入 GitHub Copilot 使用的模型名稱。選填，預設為 gpt-4o。選擇 GitHub Copilot + 內部網路時顯示。 |
+| GitHub Copilot Request Timeout (ms) | string | 否 | 120000 | GitHub Copilot 請求超時時間（毫秒）。預設：120000 ms（2分鐘）。若清空此欄位，則預設為 60000 ms（1分鐘）。選擇 GitHub Copilot + 內部網路時顯示。 |
 | System Instruction Source | pickList | 是 | Inline | 選擇系統指令的來源。選項: Inline (行內), File (檔案)。 |
 | System Prompt File | string | 否 | 無 | 系統提示詞檔案的路徑。支援格式: .md, .txt, .json, .yaml, .yml, .xml, .html。選填。如果檔案不存在或為空，會自動回退到行內指令。 |
 | System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。當 System Instruction Source 選擇 'Inline' 時使用。選填。如果為空，系統會自動使用預設的 Code Review 指令。 |

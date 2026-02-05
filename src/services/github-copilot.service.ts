@@ -10,15 +10,17 @@ import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.
 export class GithubCopilotService implements AIService {
     private serverAddress: string;
     private model: string;
+    private timeout: number;
     private client: any; // CopilotClient 實例，延遲初始化
 
     /**
      * 建立 GitHub Copilot 服務實例
      * @param serverAddress - CLI Server 位址 (格式: host:port)。若未提供，則使用 Build Agent 內的 GitHub Copilot CLI
-     * @param model - 模型名稱，預設為 'gpt-5-mini'
+     * @param model - 模型名稱，預設為 'gpt-4o'
+     * @param timeout - 請求超時時間（毫秒）。若未提供，預設為 60000 ms (1分鐘)
      * @throws {Error} 當 serverAddress 格式錯誤時拋出錯誤
      */
-    constructor(serverAddress?: string, model: string = 'gpt-5-mini') {
+    constructor(serverAddress?: string, model: string = 'gpt-4o', timeout?: number) {
         // 如果提供了 serverAddress，則驗證格式
         if (serverAddress && serverAddress.trim() !== '') {
             this.parseServerAddress(serverAddress);
@@ -27,7 +29,9 @@ export class GithubCopilotService implements AIService {
             this.serverAddress = ''; // 空字串表示使用本機 CLI
         }
 
-        this.model = model || 'gpt-5-mini';
+        this.model = model || 'gpt-4o';
+        // 處理 timeout：如果提供了值則使用，否則預設 60000 ms
+        this.timeout = timeout !== undefined ? timeout : 60000;
     }
 
     /**
@@ -82,7 +86,8 @@ export class GithubCopilotService implements AIService {
                     }
                     // 即時輸出串流內容（可選）
                     if (config?.showReviewContent) {
-                        process.stdout.write(deltaContent);
+                        // 先關閉即時輸出，若需要 Debug 可取消註解
+                        // process.stdout.write(deltaContent);
                     }
                     content += deltaContent;
                 }
@@ -95,10 +100,10 @@ export class GithubCopilotService implements AIService {
 
             // 發送 Prompt 並等待回應完成
             const startTime = Date.now();
-            console.log('⏳ Sending request to GitHub Copilot...'); 
+            console.log(`⏳ Sending request to GitHub Copilot (timeout: ${this.timeout}ms)...`); 
             const response = await session.sendAndWait({
                 prompt
-            }); 
+            }, this.timeout); 
             const endTime = Date.now();
             const duration = ((endTime - startTime) / 1000).toFixed(2);
             console.log(`\n⏱️ GitHub Copilot response completed in ${duration} seconds`);
@@ -252,6 +257,7 @@ export class GithubCopilotService implements AIService {
         console.log('🚩 Generating response using GitHub Copilot...');
         console.log(`+ Server: ${this.serverAddress || 'local agent'}`);
         console.log(`+ Model: ${this.model}`);
+        console.log(`+ Timeout: ${this.timeout}ms`);
         console.log(`+ Max Output Tokens: ${config?.maxOutputTokens}`);
         console.log(`+ Temperature: ${config?.temperature}`);
         console.log(`+ ShowReviewContent: ${config?.showReviewContent}`);
@@ -280,6 +286,7 @@ export class GithubCopilotService implements AIService {
         console.log('⚙️  Generation Config:');
         console.log(`   - Server: ${this.serverAddress || 'local agent'}`);
         console.log(`   - Model: ${this.model}`);
+        console.log(`   - Timeout: ${this.timeout}ms`);
         console.log(`   - Temperature: ${config?.temperature ?? 'default'}`);
         console.log(`   - Max Output Tokens: ${config?.maxOutputTokens ?? 'default'}`);
         console.log('='.repeat(80));

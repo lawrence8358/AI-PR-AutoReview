@@ -22,7 +22,9 @@ interface TestOptions {
     aiProvider: string;
     modelName: string;
     modelKey: string;
-    serverAddress?: string; // For GitHub Copilot
+    // For GitHub Copilot
+    serverAddress?: string; 
+    timeout?: number;
     // For Azure DevOps
     organizationUrl?: string;
     projectName?: string;
@@ -93,6 +95,11 @@ class PRReviewTester {
                 // 指定 GitHub Copilot CLI Server 位址
                 case '--server-address':
                     options.serverAddress = value;
+                    i++;
+                    break;
+                // 指定 GitHub Copilot 請求超時時間 (毫秒)
+                case '--timeout':
+                    options.timeout = parseInt(value);
                     i++;
                     break;
                 // 指定 Azure DevOps 組織 URL
@@ -292,7 +299,8 @@ AI 提供者參數:
             aiProvider.registerService(this.options.aiProvider, {
                 apiKey: this.options.modelKey,
                 modelName: this.options.modelName,
-                serverAddress: this.options.serverAddress
+                serverAddress: this.options.serverAddress,
+                timeout: this.options.timeout
             });
 
             const devOpsProvider = new DevOpsProviderService();
@@ -304,6 +312,16 @@ AI 提供者參數:
             });
 
             const devOpsService = devOpsProvider.getService(providerName);
+            const systemInstruction = `You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.
+1. Begin with a summary conclusion of the analysis, for example: AI Review Status: 🟢 Recommend Approval, 🔴 Recommend Rejection, 🟡 Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.
+2. Do not include any content unrelated to the code review.
+3. Use Traditional Chinese (zh-TW) for the review result. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].
+4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.
+5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.
+6. Skip analysis of images, binary files, or other non-code files.
+7. Skip analysis of deleted files.
+8. Use Markdown format for the reply.
+9. Assume the provided code snippets are part of a larger, valid codebase. Do not report errors regarding "unresolved symbols," "missing definitions," or "reference issues" that may exist outside the provided diff. Focus your analysis strictly on the logic and quality of the changes themselves.`;
 
             // 構建 pipeline inputs
             console.log('\n📋 準備 Pipeline 輸入...');
@@ -312,7 +330,8 @@ AI 提供者參數:
                 modelName: this.options.modelName,
                 modelKey: this.options.modelKey,
                 serverAddress: this.options.serverAddress,
-                systemInstruction: 'You are a professional code reviewer. Review the code changes and provide feedback in concise bullet points.',
+                timeout: this.options.timeout,
+                systemInstruction: systemInstruction,
                 promptTemplate: '{code_changes}',
                 maxOutputTokens: 4096,
                 temperature: 1.0,

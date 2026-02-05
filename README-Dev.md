@@ -100,6 +100,10 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts [參數]
 - `--repo <REPO>` - Repository name
 - `--token <TOKEN>` - GitHub token
 
+**GitHub Copilot 參數**
+- `--serverAddress` - GitHub Copilot CLI Server 位址
+- `--timeout` - GitHub Copilot CLI 請求超時時間 (毫秒) 
+
 **AI 提供者參數**：
 - `--ai <PROVIDER>` - AI 提供者：'claude', 'openai', 'grok', 'google'（預設：claude）
 - `--model <MODEL_NAME>` - 模型名稱（例如：claude-haiku-4-5、gpt-4o、gemini-2.5-flash）
@@ -151,6 +155,22 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --ai openai \
   --model gpt-4o \
   --throttle false
+```
+
+2. **Azure DevOps + GitHub Copilot**
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts \
+  --provider azure \
+  --token Your_AzureDevops_Token
+  --pr 20 \
+  --org https://dev.azure.com/myorg \
+  --project MyProject \
+  --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
+  --ai githubcopilot \
+  --model gpt-5-mini \
+  --throttle true \
+  --server-address 10.10.10.111:8080 \
+  --timeout 120000
 ```
 
 **輸出說明**：

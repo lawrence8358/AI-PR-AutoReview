@@ -40,7 +40,6 @@ export class AIProviderService {
         if (!config.modelName || config.modelName.trim() === '') {
             throw new Error('⛔ Model name is required');
         }
-
         this.configs.set(providerLower, config);
     }
 
@@ -80,8 +79,8 @@ export class AIProviderService {
                 service = new ClaudeService(config.apiKey, config.modelName);
                 break;
             case 'githubcopilot':
-                // serverAddress 是可選的，未提供時使用本機 CLI
-                service = new GithubCopilotService(config.serverAddress, config.modelName);
+                // serverAddress 和 timeout 是可選的，未提供時使用本機 CLI 和預設超時
+                service = new GithubCopilotService(config.serverAddress, config.modelName, config.timeout);
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);
