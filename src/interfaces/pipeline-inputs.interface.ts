@@ -8,6 +8,8 @@ export interface PipelineInputs {
     modelName: string;
     /** AI 模型 API 金鑰 */
     modelKey: string;
+    /** Server 位址 (選用，用於 GitHub Copilot) */
+    serverAddress?: string;
     /** 系統指令 */
     systemInstruction: string;
     /** 提示詞範本 */

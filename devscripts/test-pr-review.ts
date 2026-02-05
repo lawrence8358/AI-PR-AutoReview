@@ -22,6 +22,7 @@ interface TestOptions {
     aiProvider: string;
     modelName: string;
     modelKey: string;
+    serverAddress?: string; // For GitHub Copilot
     // For Azure DevOps
     organizationUrl?: string;
     projectName?: string;
@@ -89,6 +90,11 @@ class PRReviewTester {
                     options.modelKey = value;
                     i++;
                     break;
+                // 指定 GitHub Copilot CLI Server 位址
+                case '--server-address':
+                    options.serverAddress = value;
+                    i++;
+                    break;
                 // 指定 Azure DevOps 組織 URL
                 case '--org':
                     options.organizationUrl = value;
@@ -148,12 +154,20 @@ class PRReviewTester {
             process.exit(1);
         }
 
-        if (!options.modelKey) {
-            options.modelKey = this.getKeyFromEnv(options.aiProvider);
+        // GitHub Copilot 不需要 API key，serverAddress 為可選（未提供時使用本機 CLI）
+        if (options.aiProvider.toLowerCase() === 'githubcopilot') {
+            if (!options.serverAddress) {
+                options.serverAddress = process.env.GitHubCopilotServerAddress || '';
+            }
+            options.modelKey = ''; // GitHub Copilot 不使用 API key
+        } else {
             if (!options.modelKey) {
-                console.error(`❌ Error: API key is required for ${options.aiProvider}`);
-                console.log('   Provide via --key or environment variable');
-                process.exit(1);
+                options.modelKey = this.getKeyFromEnv(options.aiProvider);
+                if (!options.modelKey) {
+                    console.error(`❌ Error: API key is required for ${options.aiProvider}`);
+                    console.log('   Provide via --key or environment variable');
+                    process.exit(1);
+                }
             }
         }
 
@@ -168,7 +182,9 @@ class PRReviewTester {
             'claude': 'Claude',
             'openai': 'OpenAI',
             'grok': 'Grok',
-            'google': 'Google'
+            'google': 'Google',
+            'githubcopilot': 'GitHubCopilot',
+            'copilot': 'GitHubCopilot'
         };
         return map[provider.toLowerCase()] || provider;
     }
@@ -181,7 +197,8 @@ class PRReviewTester {
             'Claude': 'ANTHROPIC_API_KEY',
             'OpenAI': 'OPENAI_API_KEY',
             'Grok': 'XAI_API_KEY',
-            'Google': 'GOOGLE_API_KEY'
+            'Google': 'GOOGLE_API_KEY',
+            'GitHubCopilot': '' // GitHub Copilot 不需要 API Key
         };
 
         const envKey = keyMap[provider];
@@ -216,9 +233,10 @@ GitHub 參數:
   --repo <NAME>            Repository name
 
 AI 提供者參數:
-  --ai <PROVIDER>          'claude', 'openai', 'grok', 'google'
-  --model <NAME>           Model name (如: claude-haiku-4-5)
+  --ai <PROVIDER>          'claude', 'openai', 'grok', 'google', 'githubcopilot'
+  --model <NAME>           Model name (如: claude-haiku-4-5, gpt-4o)
   --key <KEY>              API key (或使用環境變數)
+  --server-address <ADDR>  GitHub Copilot CLI Server 位址 (格式: host:port)
 
 功能開關:
   --throttle <true|false>      啟用節流模式 (預設: true，僅送差異)
@@ -273,7 +291,8 @@ AI 提供者參數:
             const aiProvider = new AIProviderService();
             aiProvider.registerService(this.options.aiProvider, {
                 apiKey: this.options.modelKey,
-                modelName: this.options.modelName
+                modelName: this.options.modelName,
+                serverAddress: this.options.serverAddress
             });
 
             const devOpsProvider = new DevOpsProviderService();
@@ -292,6 +311,7 @@ AI 提供者參數:
                 aiProvider: this.options.aiProvider,
                 modelName: this.options.modelName,
                 modelKey: this.options.modelKey,
+                serverAddress: this.options.serverAddress,
                 systemInstruction: 'You are a professional code reviewer. Review the code changes and provide feedback in concise bullet points.',
                 promptTemplate: '{code_changes}',
                 maxOutputTokens: 4096,
@@ -338,7 +358,7 @@ AI 提供者參數:
             console.log('='.repeat(80));
 
             console.log('\n✅ 測試完成！');
-
+            process.exit(0);
         } catch (error: any) {
             console.error('\n❌ 錯誤:', error.message);
             if (error.stack) {
@@ -357,6 +377,9 @@ AI 提供者參數:
         console.log(`  • PR ID: ${this.options.prId}`);
         console.log(`  • AI Provider: ${this.options.aiProvider}`);
         console.log(`  • Model: ${this.options.modelName}`);
+        if (this.options.aiProvider.toLowerCase() === 'githubcopilot') {
+            console.log(`  • CLI Connection: ${this.options.serverAddress || 'local agent'}`);
+        }
         console.log(`  • Throttle Mode: ${this.options.enableThrottleMode ? '✓ Enabled' : '✗ Disabled'}`);
         console.log(`  • Incremental Diff: ${this.options.enableIncrementalDiff ? '✓ Enabled' : '✗ Disabled'}`);
         console.log(`  • Verbose Output: ${this.options.showReviewContent ? '✓ Enabled' : '✗ Disabled'}`);

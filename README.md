@@ -4,14 +4,15 @@
 
 This is an Azure DevOps Pipeline extension whose primary purpose is to allow AI to automatically perform code reviews on Pull Request (PR) code changes (Diff) and post the review results as comments back to the PR.
 
-Currently supports: **Google Gemini**, **OpenAI**, **Grok (xAI)**, and **Claude (Anthropic)**.
+Currently supports: **Google Gemini**, **OpenAI**, **Grok (xAI)**, **Claude (Anthropic)**, and **GitHub Copilot**.
 
 > This extension also supports GitHub repository Pull Request CI.
 
 
 ## ✨ Main Features
 + **Automated PR review**: Automatically triggers during PR build validation.
-+ **Multiple AI platforms**: Supports Google Gemini, OpenAI, Grok (xAI), and Claude (Anthropic) for code analysis.
++ **Multiple AI platforms**: Supports Google Gemini, OpenAI, Grok (xAI), Claude (Anthropic), and GitHub Copilot (Preview) for code analysis.
++ **GitHub Copilot CLI integration**: Connect to enterprise-deployed GitHub Copilot CLI Server to reuse existing infrastructure.
 + **Direct feedback**: Publishes AI review suggestions directly to the PR as comments.
 + **Highly customizable**: System prompts and model parameters (Temperature, etc.) can be customized.
 + **File filtering**: You can specify file extensions to include or exclude from analysis.
@@ -22,7 +23,58 @@ You can install this extension from the Azure DevOps Marketplace: https://market
 
 
 ## 🛠️ Setup steps
-Before using this Task, you need to complete the following configuration steps:
+
+### 📊 AI Provider Prerequisites Comparison
+Different AI Providers have different prerequisites:
+
+| AI Provider | Prerequisites | Instructions |
+|---|---|---|
+| Google Gemini | Apply for API Key | Get API Key from [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| OpenAI | Apply for API Key | Get API Key from [OpenAI Platform](https://platform.openai.com/api-keys) |
+| Grok (xAI) | Apply for API Key | Get API Key from [xAI Console](https://console.x.ai/) |
+| Claude (Anthropic) | Apply for API Key | Get API Key from [Anthropic Console](https://console.anthropic.com/) |
+| **GitHub Copilot** | Deploy CLI Server | See [GitHub Copilot CLI Prerequisites](#github-copilot-cli-prerequisites) below |
+
+### GitHub Copilot CLI Prerequisites
+
+If your organization has deployed GitHub Copilot Enterprise, you can use the internal CLI Server for PR Code Review.
+
+#### Applicable Scenarios
+- Enterprise has already deployed GitHub Copilot CLI Server internally
+- Want to reuse existing Copilot infrastructure
+- Need unified AI toolchain experience
+
+#### CLI Server Setup Steps
+
+1. **Install GitHub Copilot CLI**
+   ```bash
+   npm install -g @github/copilot-sdk
+   ```
+
+2. **Start CLI Server Mode**
+   
+   Start the CLI Server on an internal network server:
+   ```bash
+   copilot --headless --port 8080
+   ```  
+
+3. **Configure in Pipeline Task**
+   - **AI Provider**: Select `GitHub Copilot`
+   - **Network Type**: Select `Intranet`
+   - **CLI Server Address**: (Optional) Enter `your-server-ip:8080` or `your-domain:8080`. If not provided, will use GitHub Copilot CLI in Build Agent
+   - **Model Name**: (Optional) Defaults to `gpt-4o`
+
+#### Important Notes
+- **Remote Server Mode**: When CLI Server Address is provided, ensure Pipeline Agent and CLI Server are on the same internal network or can connect to each other. CLI Server must be running when Pipeline executes.
+- **Local CLI Mode**: When CLI Server Address is not provided, will use the authenticated GitHub Copilot CLI in the Build Agent. Requirements:
+  - GitHub Copilot CLI must be installed on Build Agent
+  - Must have completed authentication via `copilot auth login`
+  - Agent must have GitHub Copilot access permission
+- Currently only supports Intranet mode; Internet mode will be available in future versions
+
+---
+
+Before using this Task, you also need to complete the following configuration steps:
 
 ### Step 1: Configure CI service permissions
 To allow the Pipeline service to write AI comments back to the PR, you must grant it the required permissions. If this permission is not set, the Pipeline will fail and display the error `Error: TF401027: You need the Git 'PullRequestContribute' permission...`.
@@ -55,7 +107,8 @@ Below are all input parameters supported by this Task:
   
 | Label | Type | Required | Default | Description |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic). |
+| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot  (Preview). |
+| GitHub Copilot Network Type | pickList | Conditional | Intranet | Select GitHub Copilot connection type. Options: Intranet, Internet (Coming Soon). Shown when GitHub Copilot is selected. |
 | AI Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
 | Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
 | OpenAI Model Name | string | Conditional | gpt-4o | Enter the OpenAI model name (e.g., gpt-4o, gpt-4o-mini). Required when AI Provider is OpenAI. |
@@ -64,6 +117,8 @@ Below are all input parameters supported by this Task:
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
 | Claude Model Name | string | Conditional | claude-haiku-4-5 | Enter the Claude model name (e.g., claude-haiku-4-5). Required when AI Provider is Claude. |
 | Claude API Key | string | Conditional | (empty) | Enter your Claude API Key. Required when AI Provider is Claude. |
+| GitHub Copilot CLI Server Address | string | No | (empty) | (Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080 or copilot.internal.company.com:8080. If not provided, will use GitHub Copilot CLI in Build Agent. Visible when GitHub Copilot + Intranet is selected. |
+| Model Name (GitHub Copilot) | string | No | gpt-4o | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-4o. Shown when GitHub Copilot + Intranet is selected. |
 | System Instruction Source | pickList | Yes | Inline | Select the source of the system instruction. Options: Inline, File. |
 | System Prompt File | string | No | (empty) | Path to the system prompt file. Supported formats: .md, .txt, .json, .yaml, .yml, .xml, .html. Optional. If the file is not found or empty, falls back to inline instruction. |
 | System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. Used when System Instruction Source is 'Inline'. Optional. If empty, a default code review instruction will be used automatically. |

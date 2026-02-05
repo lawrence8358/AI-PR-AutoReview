@@ -11,7 +11,7 @@ async function run() {
     const prompt = `請先確認你會使用 C# 語言嗎?`;
 
     try {
-        let registerConfig: { apiKey: string; modelName: string } | undefined;
+        let registerConfig: { apiKey: string; modelName: string; serverAddress?: string } | undefined;
         let canonicalName = 'Google';
 
         if (providerKey === 'openai') {
@@ -38,13 +38,21 @@ async function run() {
                 apiKey: process.env.GeminiAPIKey ?? '',
                 modelName: process.env.ModelName ?? 'gemini-2.5-flash'
             };
+        } else if (providerKey === 'githubcopilot') {
+            canonicalName = 'GitHubCopilot';
+            registerConfig = {
+                apiKey: '', // GitHub Copilot 不需要 API Key
+                modelName: process.env.ModelName ?? 'gpt-4o',
+                serverAddress: process.env.GitHubCopilotServerAddress ?? ''
+            };
         } else {
             throw new Error(`⛔ Unsupported AI Provider: ${requested}`);
         }
 
         aiProvider.registerService(canonicalName, {
             apiKey: registerConfig.apiKey,
-            modelName: registerConfig.modelName
+            modelName: registerConfig.modelName,
+            serverAddress: registerConfig.serverAddress
         });
 
         const aiService = aiProvider.getService(canonicalName);
@@ -58,6 +66,7 @@ async function run() {
                 showReviewContent: showReviewContent
             }
         );
+        process.exit(0);
     } catch (err: any) {
         console.error('⛔ Unhandled error: ' + (err?.message || String(err)));
         process.exit(1);

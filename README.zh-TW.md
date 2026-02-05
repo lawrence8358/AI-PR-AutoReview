@@ -3,14 +3,15 @@
 
 這是一個 Azure DevOps Pipeline 擴充套件，主要目的是讓 AI 自動針對 Pull Request (PR) 的程式碼變更（Diff）進行 Code Review，並將結果評論（Comment）回 PR。
 
-目前支援：**Google Gemini**、**OpenAI**、**Grok (xAI)**、**Claude (Anthropic)**。
+目前支援：**Google Gemini**、**OpenAI**、**Grok (xAI)**、**Claude (Anthropic)**、**GitHub Copilot**。
 
 > 本套件亦支援針對 GitHub 儲存庫的 Pull Request CI 情境進行抓取與回寫評論。
 
 
 ## ✨ 主要功能
 + **自動化 PR 審查**：在 PR 建置驗證 (Build Validation) 過程中自動觸發。
-+ **支援多個 AI 平台**：支援 Google Gemini、OpenAI、Grok (xAI)、Claude (Anthropic) 進行程式碼分析。
++ **支援多個 AI 平台**：支援 Google Gemini、OpenAI、Grok (xAI)、Claude (Anthropic)、GitHub Copilot (預覽版) 進行程式碼分析。
++ **GitHub Copilot CLI 整合**：支援連接企業內部部署的 GitHub Copilot CLI Server，重用現有基礎設施。
 + **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中。
 + **高度可自訂**：可自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)。
 + **檔案過濾**：可指定要包含或排除的檔案副檔名。
@@ -21,7 +22,58 @@
 
 
 ## 🛠️ 設定步驟
-在使用此 Task 之前，您需要完成以下設定：
+
+### 📊 AI Provider 前置作業比較表
+不同的 AI Provider 有不同的前置條件：
+
+| AI Provider | 需要前置作業 | 說明 |
+|---|---|---|
+| Google Gemini | 申請 API Key | 從 [Google AI Studio](https://aistudio.google.com/app/apikey) 獲取 API Key |
+| OpenAI | 申請 API Key | 從 [OpenAI Platform](https://platform.openai.com/api-keys) 獲取 API Key |
+| Grok (xAI) | 申請 API Key | 從 [xAI Console](https://console.x.ai/) 獲取 API Key |
+| Claude (Anthropic) | 申請 API Key | 從 [Anthropic Console](https://console.anthropic.com/) 獲取 API Key |
+| **GitHub Copilot** | 部署 CLI Server | 請參考下方 [GitHub Copilot CLI 前置作業](#github-copilot-cli-前置作業) |
+
+### GitHub Copilot CLI 前置作業
+
+若您的組織已部署 GitHub Copilot 企業版，您可以使用內部 CLI Server 進行 PR Code Review。
+
+#### 適用情境
+- 企業內部已部署 GitHub Copilot CLI Server
+- 希望重用現有 Copilot 基礎設施
+- 需要統一 AI 工具鏈體驗
+
+#### CLI Server 設定步驟
+
+1. **安裝 GitHub Copilot CLI**
+   ```bash
+   npm install -g @github/copilot-sdk
+   ```
+
+2. **啟動 CLI Server 模式**
+   
+   在內部網路中的伺服器上啟動 CLI Server：
+   ```bash
+   copilot --headless --port 8080
+   ```  
+
+3. **在 Pipeline Task 中設定**
+   - **AI Provider**: 選擇 `GitHub Copilot`
+   - **Network Type**: 選擇 `內部網路 (Intranet)`
+   - **CLI Server Address**: (選填) 輸入 `your-server-ip:8080` 或 `your-domain:8080`。若未填寫，將使用 Build Agent 內的 GitHub Copilot CLI
+   - **Model Name**: (選填) 預設為 `gpt-4o`
+
+#### 注意事項
+- **遠端 Server 模式**：當填寫 CLI Server Address 時，確保 Pipeline Agent 與 CLI Server 在同一內部網路或能夠互相連接。CLI Server 必須在 Pipeline 執行時保持運行。
+- **本機 CLI 模式**：若未填寫 CLI Server Address，將會使用 Build Agent 內已登入的 GitHub Copilot CLI。需確保：
+  - Build Agent 已安裝 GitHub Copilot CLI
+  - 已執行 `copilot auth login` 完成身份驗證
+  - Agent 擁有 GitHub Copilot 存取權限
+- 目前僅支援內部網路模式，網際網路模式將在未來版本提供
+
+---
+
+在使用此 Task 之前，您還需要完成以下設定：
 
 ### Step 1: 設定 CI 服務權限
 為了讓 Pipeline 服務能將 AI 的評論寫回 PR，您必須授予它權限，若未設定此權限，Pipeline 將會失敗並顯示 `Error: TF401027: You need the Git 'PullRequestContribute' permission... `錯誤。
@@ -54,7 +106,8 @@
 
 | 標籤 (Label) | 類型 (Type) | 必要 | 預設值 | 說明 |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)、Claude (Anthropic)。 |
+| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)、Claude (Anthropic)、GitHub Copilot (預覽版)。 |
+| GitHub Copilot Network Type | pickList | 條件式 | 內部網路 (Intranet) | 選擇 GitHub Copilot 連接類型。選項: 內部網路 (Intranet)、網際網路 (Internet - 即將推出)。選擇 GitHub Copilot 時顯示。 |
 | Gemini Model Name | string | 條件式 | gemini-2.5-flash | 輸入 Google Gemini 的模型名稱，選擇 Google 時必填。 |
 | Gemini API Key | string | 條件式 | 無 | 輸入 Google Gemini 的 API Key，選擇 Google 時必填。 |
 | OpenAI Model Name | string | 條件式 | gpt-4o-mini | 輸入 OpenAI 的模型名稱（例如 gpt-4o、gpt-4o-mini），選擇 OpenAI 時必填。 |
@@ -63,6 +116,8 @@
 | Grok (xAI) API Key | string | 條件式 | 無 | 輸入 Grok (xAI) 的 API Key，選擇 Grok 時必填。 |
 | Claude Model Name | string | 條件式 | claude-haiku-4-5 | 輸入 Claude 的模型名稱（例如 claude-haiku-4-5），選擇 Claude 時必填。 |
 | Claude API Key | string | 條件式 | 無 | 輸入 Claude (Anthropic) 的 API Key，選擇 Claude 時必填。 |
+| GitHub Copilot CLI Server Address | string | 否 | 無 | (選填) 輸入 GitHub Copilot CLI Server 位址（IP 或 Domain + Port）。範例：192.168.1.100:8080 或 copilot.internal.company.com:8080。若未填寫，則使用 Build Agent 內的 GitHub Copilot CLI。選擇 GitHub Copilot + 內部網路時顯示。 |
+| Model Name (GitHub Copilot) | string | 否 | gpt-4o | 輸入 GitHub Copilot 使用的模型名稱。選填，預設為 gpt-4o。選擇 GitHub Copilot + 內部網路時顯示。 |
 | System Instruction Source | pickList | 是 | Inline | 選擇系統指令的來源。選項: Inline (行內), File (檔案)。 |
 | System Prompt File | string | 否 | 無 | 系統提示詞檔案的路徑。支援格式: .md, .txt, .json, .yaml, .yml, .xml, .html。選填。如果檔案不存在或為空，會自動回退到行內指令。 |
 | System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。當 System Instruction Source 選擇 'Inline' 時使用。選填。如果為空，系統會自動使用預設的 Code Review 指令。 |

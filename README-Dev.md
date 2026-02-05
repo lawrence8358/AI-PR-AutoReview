@@ -35,7 +35,8 @@ d:\Project\AiPrCodeReview
 │   │   ├── google-ai.service.ts              # Google Gemini AI 服務實作
 │   │   ├── openai.service.ts                 # OpenAI 服務實作
 │   │   ├── grok.service.ts                   # Grok (xAI) 服務實作
-│   │   └── claude.service.ts                 # Claude (Anthropic) 服務實作
+│   │   ├── claude.service.ts                 # Claude (Anthropic) 服務實作
+│   │   └── github-copilot.service.ts         # GitHub Copilot 服務實作
 │   ├── index.ts             # 主程式進入點
 │   └── task.json            # Azure Pipeline Task 定義檔
 ├── package.json             # npm 套件設定
@@ -129,10 +130,11 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
 ```bash
 npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --provider azure \
+  --token Your_AzureDevops_Token
   --pr 20 \
   --org https://dev.azure.com/myorg \
   --project MyProject \
-  --repo-id 9efec7a7-ef7f-4c2b-8bb8-e3e4f9c2e0ca \
+  --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
   --ai google \
   --model gemini-2.5-flash \
   --throttle true \
@@ -183,6 +185,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
 | OpenAIAPIKey | 選用 | sk-... | OpenAI API Key，若使用 OpenAI 時，此欄位必填 |
 | GrokAPIKey | 選用 | xai-... | Grok (xAI) API Key，若使用 Grok 時，此欄位必填 |
 | ClaudeAPIKey | 選用 | sk-ant-... | Claude API Key，若使用 Claude 時，此欄位必填 |
+| GitHubCopilotServerAddress | 選用 | localhost:8080 | GitHub Copilot CLI Server 位址（格式: host:port）。若未提供，將使用本機的 GitHub Copilot CLI（需先完成 `copilot auth login`） |
 | ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-4o、grok-beta、claude-haiku-4-5） |
 | SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令 |
 | PromptTemplate | 必要 | {code_changes} | Prompt 範本，index.ts 以 `{code_changes}` 作為佔位符 |
@@ -204,13 +207,16 @@ DevOpsProjectName=YourProject
 DevOpsRepositoryId=00000000-0000-0000-0000-000000000000
 DevOpsPRId=4
 
-# AI Provider (選擇其一：Google / OpenAI / Grok / Claude)
+# AI Provider (選擇其一：Google / OpenAI / Grok / Claude / GitHubCopilot)
 GeminiAPIKey=PASTE_YOUR_GEMINI_KEY
 OpenAIAPIKey=PASTE_YOUR_OPENAI_KEY
 GrokAPIKey=PASTE_YOUR_GROK_KEY
 ClaudeAPIKey=PASTE_YOUR_CLAUDE_KEY
 AiProvider=Google
 ModelName=gemini-2.5-flash
+# GitHub Copilot (選用：若未填寫則使用本機 CLI)
+GitHubCopilotServerAddress=localhost:8080
+
 SystemInstruction=你是一位資深軟體工程師，請協助進行程式碼審查與分析。
 PromptTemplate={code_changes}
 MaxOutputTokens=4096
@@ -362,6 +368,102 @@ PR 有 3 個 iterations
 3. **Token 優化**：結合使用時效果最佳
    - `enableThrottleMode=true` + `enableIncrementalDiff=true`
    - 最少的內容 → 最少的 token 消耗 → 最低成本
+
+
+## GitHub Copilot 整合說明
+
+### 架構設計
+
+GitHub Copilot 的整合與其他 AI Providers 有一些不同：
+
+1. **不繼承 BaseAIService**
+   - `GithubCopilotService` 直接實作 `AIService` 介面
+   - 原因：GitHub Copilot 不需要 API Key（認證由 CLI Server 處理）
+   - BaseAIService 的 constructor 會強制驗證 API Key
+
+2. **使用官方 SDK**
+   - 使用 `@github/copilot-sdk` 連接到 CLI Server
+   - SDK 版本：0.1.21（Technical Preview）
+
+3. **延遲初始化**
+   - Client 連接在首次呼叫 `generateComment()` 時建立
+   - 避免啟動時連接失敗影響整體服務
+
+### 關鍵實作細節
+
+1. **Server 位址設定**
+   - 使用 `cliUrl` 選項連接到現有 CLI Server
+   - 支援格式：`host:port`、`localhost:8080`、`127.0.0.1:8080`
+
+2. **Session 管理**
+   - 每個請求建立獨立的 session
+   - 使用 `systemMessage.content` 傳遞 system instruction
+   - 使用 `sendAndWait()` 發送並等待回應
+   - 完成後呼叫 `session.destroy()` 清理資源
+
+3. **Token Usage 追蹤**
+   - 嘗試從 SDK 回應中提取 usage 資訊
+   - 若不可用，使用估算（字元數 / 4）
+   - 日誌明確標註是實際值或估算值
+
+### 現有限制
+
+1. **SDK 處於 Technical Preview**
+   - API 可能變動需要調整
+   - 已設計彈性介面便於未來調整
+
+2. **僅支援內部網路模式**
+   - 網際網路模式將在未來版本提供
+   - 將整合 MCP Server 連接雲端 Copilot
+
+3. **不支援 Temperature 和 MaxTokens**
+   - SDK 不直接支援這些參數
+   - 未來可能需透過 provider config 設定
+
+### 測試建議
+
+#### 方案 1：使用遠端 CLI Server
+1. **設定 .env**
+   ```properties
+   AiProvider=GitHubCopilot
+   GitHubCopilotServerAddress=localhost:8080
+   ModelName=gpt-4o
+   ```
+
+2. **啟動測試 CLI Server**
+   ```bash
+   # 安裝 SDK
+   npm install -g @github/copilot-sdk
+   
+   # 啟動 server 模式
+   copilot --headless --port 8080
+   ```
+
+3. **執行 debug**
+   ```powershell
+   npm run devscripts:ai
+   ```
+
+#### 方案 2：使用本機 CLI（推薦）
+1. **設定 .env**（不需要 GitHubCopilotServerAddress）
+   ```properties
+   AiProvider=GitHubCopilot
+   ModelName=gpt-4o
+   ```
+
+2. **確認 GitHub Copilot CLI 已安裝並認證**
+   ```bash
+   # 檢查是否已安裝
+   copilot --version
+   
+   # 若未登入，執行認證
+   copilot auth login
+   ```
+
+3. **執行 debug**
+   ```powershell
+   npm run devscripts:ai
+   ```
 
 
 ## 打包與上傳 Marketplace（SOP）

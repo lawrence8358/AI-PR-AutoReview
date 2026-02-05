@@ -46,4 +46,6 @@ export interface AIServiceConfig {
     modelName: string;
     /** API 端點 (選用) */
     apiEndpoint?: string;
+    /** Server 位址 (選用，用於 GitHub Copilot) */
+    serverAddress?: string;
 }

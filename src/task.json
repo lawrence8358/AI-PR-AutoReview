@@ -3,7 +3,7 @@
     "id": "7fbd6a53-381e-42bd-9197-662a29d52e78",
     "name": "AI-PR-Code-Review",
     "friendlyName": "AI PR AutoReview",
-    "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok, Claude.",
+    "description": "Generates a code review for a pull request using AI, support Gemini, OpenAI, Grok, Claude, GitHub Copilot.",
     "helpMarkDown": "",
     "category": "Build",
     "visibility": [
@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 3,
-        "Patch": 4
+        "Patch": 5
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -28,7 +28,8 @@
                 "Google": "Google Gemini",
                 "OpenAI": "OpenAI",
                 "Grok": "Grok (xAI)",
-                "Claude": "Claude (Anthropic)"
+                "Claude": "Claude (Anthropic)",
+                "GitHubCopilot": "GitHub Copilot (Preview)"
             }
         },
         {
@@ -103,6 +104,36 @@
             "helpMarkDown": "Enter your Claude (Anthropic) API key.",
             "visibleRule": "inputAiProvider == Claude"
         },
+        {
+            "name": "inputGitHubCopilotNetworkType",
+            "type": "pickList",
+            "label": "GitHub Copilot Network Type",
+            "defaultValue": "Intranet",
+            "required": true,
+            "helpMarkDown": "Select GitHub Copilot connection type. Currently only supports Intranet mode (connect to internal CLI Server or use local CLI).",
+            "visibleRule": "inputAiProvider == GitHubCopilot",
+            "options": {
+                "Intranet": "Intranet"
+            }
+        },
+        {
+            "name": "inputGitHubCopilotServerAddress",
+            "type": "string",
+            "label": "GitHub Copilot CLI Server Address",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "(Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080. If not provided, will use GitHub Copilot CLI in Build Agent.",
+            "visibleRule": "inputAiProvider == GitHubCopilot && inputGitHubCopilotNetworkType == Intranet"
+        },
+        {
+            "name": "inputGitHubCopilotModelName",
+            "type": "string",
+            "label": "Model Name",
+            "defaultValue": "gpt-4o",
+            "required": true,
+            "helpMarkDown": "Optional. Defaults to gpt-4o.",
+            "visibleRule": "inputAiProvider == GitHubCopilot && inputGitHubCopilotNetworkType == Intranet"
+        }, 
         {
             "name": "inputSystemInstructionSource",
             "type": "pickList",

@@ -3,6 +3,7 @@ import { GoogleAIService } from './google-ai.service';
 import { OpenAIService } from './openai.service';
 import { GrokService } from './grok.service';
 import { ClaudeService } from './claude.service';
+import { GithubCopilotService } from './github-copilot.service';
 
 /**
  * AI 服務提供者類別
@@ -27,15 +28,20 @@ export class AIProviderService {
      * @throws {Error} 當設定無效時拋出錯誤
      */
     public registerService(provider: string, config: AIServiceConfig): void {
-        if (!config.apiKey || config.apiKey.trim() === '') {
-            throw new Error('⛔ API key is required');
+        const providerLower = provider.toLowerCase();
+
+        // GitHub Copilot 不需要 apiKey，serverAddress 也是可選的（未提供時使用本機 CLI）
+        if (providerLower !== 'githubcopilot') {
+            if (!config.apiKey || config.apiKey.trim() === '') {
+                throw new Error('⛔ API key is required');
+            }
         }
 
         if (!config.modelName || config.modelName.trim() === '') {
             throw new Error('⛔ Model name is required');
         }
 
-        this.configs.set(provider.toLowerCase(), config);
+        this.configs.set(providerLower, config);
     }
 
     /**
@@ -72,6 +78,10 @@ export class AIProviderService {
                 break;
             case 'claude':
                 service = new ClaudeService(config.apiKey, config.modelName);
+                break;
+            case 'githubcopilot':
+                // serverAddress 是可選的，未提供時使用本機 CLI
+                service = new GithubCopilotService(config.serverAddress, config.modelName);
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);

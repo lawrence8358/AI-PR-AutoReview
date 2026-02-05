@@ -109,15 +109,16 @@ export class Main {
     /**
      * 取得 AI Provider 的模型名稱和 API Key
      * @param provider - AI Provider 名稱
-     * @returns { modelName, modelKey }
+     * @returns { modelName, modelKey, serverAddress }
      */
-    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string } {
+    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; serverAddress?: string } {
         const providerLower = provider.toLowerCase();
 
         if (this.isDebugMode) {
             const modelName = process.env.ModelName ?? this.getDefaultModelName(providerLower);
             const modelKey = this.getModelKeyFromEnv(providerLower);
-            return { modelName, modelKey };
+            const serverAddress = providerLower === 'githubcopilot' ? process.env.GitHubCopilotServerAddress : undefined;
+            return { modelName, modelKey, serverAddress };
         } else {
             return this.getModelConfigFromTaskInput(providerLower);
         }
@@ -128,7 +129,8 @@ export class Main {
             'openai': 'gpt-4.1-nano',
             'grok': 'grok-3-mini',
             'claude': 'claude-haiku-4-5',
-            'google': 'gemini-2.5-flash'
+            'google': 'gemini-2.5-flash',
+            'githubcopilot': 'gpt-5-mini'
         };
         return defaults[provider] ?? 'gemini-2.5-flash';
     }
@@ -138,17 +140,19 @@ export class Main {
             'openai': 'OpenAIAPIKey',
             'grok': 'GrokAPIKey',
             'claude': 'ClaudeAPIKey',
-            'google': 'GeminiAPIKey'
+            'google': 'GeminiAPIKey',
+            'githubcopilot': '' // GitHub Copilot 不需要 API Key
         };
         return process.env[keyMap[provider]] ?? '';
     }
 
-    private getModelConfigFromTaskInput(provider: string): { modelName: string; modelKey: string } {
-        const configMap: Record<string, { nameKey: string; apiKeyKey: string; defaultName: string }> = {
+    private getModelConfigFromTaskInput(provider: string): { modelName: string; modelKey: string; serverAddress?: string } {
+        const configMap: Record<string, { nameKey: string; apiKeyKey: string; defaultName: string; serverAddressKey?: string }> = {
             'openai': { nameKey: 'inputOpenAIModelName', apiKeyKey: 'inputOpenAIApiKey', defaultName: 'gpt-4.1-nano' },
             'grok': { nameKey: 'inputGrokModelName', apiKeyKey: 'inputGrokApiKey', defaultName: 'grok-3-mini' },
             'claude': { nameKey: 'inputClaudeModelName', apiKeyKey: 'inputClaudeApiKey', defaultName: 'claude-haiku-4-5' },
-            'google': { nameKey: 'inputModelName', apiKeyKey: 'inputModelKey', defaultName: 'gemini-2.5-flash' }
+            'google': { nameKey: 'inputModelName', apiKeyKey: 'inputModelKey', defaultName: 'gemini-2.5-flash' },
+            'githubcopilot': { nameKey: 'inputGitHubCopilotModelName', apiKeyKey: '', defaultName: 'gpt-4o', serverAddressKey: 'inputGitHubCopilotServerAddress' }
         };
 
         const config = configMap[provider];
@@ -156,10 +160,17 @@ export class Main {
             throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
         }
 
-        return {
-            modelName: tl.getInput(config.nameKey, true) ?? config.defaultName,
-            modelKey: tl.getInput(config.apiKeyKey, true) ?? ''
+        const result: { modelName: string; modelKey: string; serverAddress?: string } = {
+            modelName: tl.getInput(config.nameKey, false) ?? config.defaultName,
+            modelKey: config.apiKeyKey ? (tl.getInput(config.apiKeyKey, true) ?? '') : ''
         };
+
+        // GitHub Copilot 需要讀取 serverAddress
+        if (config.serverAddressKey) {
+            result.serverAddress = tl.getInput(config.serverAddressKey, true) ?? '';
+        }
+
+        return result;
     }
 
     /**
@@ -171,7 +182,7 @@ export class Main {
         const inputAiProvider = this.getInputValue('AiProvider', 'inputAiProvider', true, 'Google');
 
         // 取得 AI Provider 設定
-        const { modelName, modelKey } = this.getAIProviderConfig(inputAiProvider);
+        const { modelName, modelKey, serverAddress } = this.getAIProviderConfig(inputAiProvider);
 
         // 取得系統指令
         const systemInstructionSource = this.getInputValue('SystemInstructionSource', 'inputSystemInstructionSource', false, 'Inline');
@@ -202,6 +213,7 @@ export class Main {
             aiProvider: inputAiProvider,
             modelName,
             modelKey,
+            serverAddress,
             systemInstruction,
             promptTemplate,
             maxOutputTokens,
@@ -435,7 +447,8 @@ async function run() {
         const aiProvider = new AIProviderService();
         aiProvider.registerService(inputs.aiProvider, {
             apiKey: inputs.modelKey,
-            modelName: inputs.modelName
+            modelName: inputs.modelName,
+            serverAddress: inputs.serverAddress
         });
 
         const devOpsProvider = new DevOpsProviderService();
