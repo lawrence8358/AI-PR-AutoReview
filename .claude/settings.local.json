@@ -5,7 +5,9 @@
       "Bash(npx tsc:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npx ts-node:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(openspec list:*)"
     ]
   }
 }

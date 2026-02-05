@@ -1,21 +1,26 @@
 # [English](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.md) | [繁體中文](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.zh-TW.md)
 
-# 🤖 AI Code Review for Azure DevOps
+# AI Code Review for Azure DevOps
 
-This is an Azure DevOps Pipeline extension whose primary purpose is to allow AI to automatically perform code reviews on Pull Request (PR) code changes (Diff) and post the review results as comments back to the PR.
+This is an Azure DevOps Pipeline extension that leverages the power of Large Language Models (LLMs) to automatically perform code reviews on Pull Request (PR) changes. It acts as an intelligent coding assistant, analyzing diffs and posting insightful comments directly to the PR.
 
-Currently supports: **Google Gemini**, **OpenAI**, **Grok (xAI)**, **Claude (Anthropic)**, and **GitHub Copilot**.
+**Now supporting all major AI providers:**
++ **GitHub Copilot** (All versions supported)
++ **OpenAI** (GPT-4o, etc.)
++ **Google Gemini**
++ **Anthropic Claude**
++ **xAI Grok**
 
-> This extension also supports GitHub repository Pull Request CI.
+> **Highlight**: Maximize the value of your existing **GitHub Copilot** subscription by integrating it directly into your Azure DevOps PR workflow! This extension also supports GitHub repository Pull Request CI.
 
 
 ## ✨ Main Features
-+ **Automated PR review**: Automatically triggers during PR build validation.
-+ **Multiple AI platforms**: Supports Google Gemini, OpenAI, Grok (xAI), Claude (Anthropic), and GitHub Copilot (Preview) for code analysis.
-+ **GitHub Copilot CLI integration**: Connect to enterprise-deployed GitHub Copilot CLI Server to reuse existing infrastructure.
-+ **Direct feedback**: Publishes AI review suggestions directly to the PR as comments.
-+ **Highly customizable**: System prompts and model parameters (Temperature, etc.) can be customized.
-+ **File filtering**: You can specify file extensions to include or exclude from analysis.
++ **Automated PR review**: Automatically triggers during PR build validation, acting as a diligent 24/7 reviewer.
++ **Universal AI Support**: Seamlessly switch between Google Gemini, OpenAI, Grok, Claude, and GitHub Copilot based on your needs.
++ **GitHub Copilot Integration**: Connect to GitHub Copilot CLI to perform reviews using your existing subscription (Individual, Business, or Enterprise), ensuring data privacy and cost-efficiency.
++ **Direct Feedback**: Publishes AI review suggestions directly to the PR as comments, threading into the conversation.
++ **Highly Customizable**: Tailor the System Prompts (Inline or File-based), adjust creativity (Temperature), and control token usage.
++ **Smart Filtering**: configure included/excluded file extensions to focus the review on what matters.
 
 
 ## Installation
@@ -37,10 +42,10 @@ Different AI Providers have different prerequisites:
 
 ### GitHub Copilot CLI Prerequisites
 
-If your organization has deployed GitHub Copilot Enterprise, you can use the internal CLI Server for PR Code Review.
+If you or your organization has a GitHub Copilot subscription (Individual, Business, or Enterprise), you can use the internal CLI Server for PR Code Review.
 
 #### Applicable Scenarios
-- Enterprise has already deployed GitHub Copilot CLI Server internally
+- Have an active GitHub Copilot subscription
 - Want to reuse existing Copilot infrastructure
 - Need unified AI toolchain experience
 

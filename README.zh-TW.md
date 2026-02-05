@@ -1,20 +1,25 @@
 # [English](./README.md) | [繁體中文](./README.zh-TW.md)
-# 🤖 AI Code Review for Azure DevOps
+# AI Code Review for Azure DevOps
 
-這是一個 Azure DevOps Pipeline 擴充套件，主要目的是讓 AI 自動針對 Pull Request (PR) 的程式碼變更（Diff）進行 Code Review，並將結果評論（Comment）回 PR。
+這是一個 Azure DevOps Pipeline 擴充套件，利用大型語言模型 (LLM) 的能力，自動針對 Pull Request (PR) 的程式碼變更（Diff）進行智慧化 Code Review，並將審查建議直接留言在 PR 中。
 
-目前支援：**Google Gemini**、**OpenAI**、**Grok (xAI)**、**Claude (Anthropic)**、**GitHub Copilot**。
+**全面支援主流 AI 平台：**
++ **GitHub Copilot** (支援所有版本訂閱)
++ **OpenAI** (GPT-4o 等)
++ **Google Gemini**
++ **Anthropic Claude**
++ **xAI Grok**
 
-> 本套件亦支援針對 GitHub 儲存庫的 Pull Request CI 情境進行抓取與回寫評論。
+> **特色亮點**：現已支援 **GitHub Copilot**！您可以直接利用現有的 GitHub Copilot 訂閱（不分版本），將 AI 審查能力無縫整合進 Azure DevOps 流程中。本套件亦支援針對 GitHub 儲存庫的 Pull Request CI 情境。
 
 
 ## ✨ 主要功能
-+ **自動化 PR 審查**：在 PR 建置驗證 (Build Validation) 過程中自動觸發。
-+ **支援多個 AI 平台**：支援 Google Gemini、OpenAI、Grok (xAI)、Claude (Anthropic)、GitHub Copilot (預覽版) 進行程式碼分析。
-+ **GitHub Copilot CLI 整合**：支援連接企業內部部署的 GitHub Copilot CLI Server，重用現有基礎設施。
-+ **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中。
-+ **高度可自訂**：可自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)。
-+ **檔案過濾**：可指定要包含或排除的檔案副檔名。
++ **自動化 PR 審查**：在 PR 建置驗證 (Build Validation) 過程中自動觸發，提供 24/7 的程式碼把關。
++ **多模型支援**：單一套件完整支援 Google Gemini、OpenAI、Grok、Claude 與 GitHub Copilot，可依需求彈性切換。
++ **GitHub Copilot 深度整合**：支援連接 GitHub Copilot CLI Server，直接重用現有的訂閱 (Individual/Business/Enterprise)，兼顧成本與隱私。
++ **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中，與開發團隊無縫協作。
++ **高度可自訂**：可詳盡自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)，打造專屬的 AI Reviewer。
++ **智慧過濾**：可精確指定要包含或排除的檔案副檔名，專注於核心程式碼。
 
 
 ## 安裝
@@ -36,10 +41,10 @@
 
 ### GitHub Copilot CLI 前置作業
 
-若您的組織已部署 GitHub Copilot 企業版，您可以使用內部 CLI Server 進行 PR Code Review。
+若您或您的組織擁有 GitHub Copilot 訂閱（個人版/商業版/企業版），您可以使用內部 CLI Server 進行 PR Code Review。
 
 #### 適用情境
-- 企業內部已部署 GitHub Copilot CLI Server
+- 擁有有效的 GitHub Copilot 訂閱
 - 希望重用現有 Copilot 基礎設施
 - 需要統一 AI 工具鏈體驗
 
