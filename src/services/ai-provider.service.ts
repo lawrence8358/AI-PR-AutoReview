@@ -79,8 +79,9 @@ export class AIProviderService {
                 service = new ClaudeService(config.apiKey, config.modelName);
                 break;
             case 'githubcopilot':
-                // serverAddress 和 timeout 是可選的，未提供時使用本機 CLI 和預設超時
-                service = new GithubCopilotService(config.serverAddress, config.modelName, config.timeout);
+                // githubToken, serverAddress 和 timeout 是可選的
+                // 未提供時使用本機 CLI 和預設超時
+                service = new GithubCopilotService(config.githubToken, config.serverAddress, config.modelName, config.timeout);
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);

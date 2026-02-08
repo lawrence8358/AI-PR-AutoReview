@@ -2,12 +2,16 @@ import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.
 
 /**
  * GitHub Copilot AI 服務實作
- * 使用 GitHub Copilot CLI Server 生成內容
- * 
+ * 支援三種認證模式：
+ * 1. Token 模式：提供 GitHub Token（適用於雲端 CI 環境）
+ * 2. 遠端 CLI Server 模式：提供 Server Address（適用於集中式架構）
+ * 3. 本機 CLI 模式：不提供任何參數（使用 Build Agent 預先設定的授權）
+ *
  * 注意：此服務直接實作 AIService 介面，不繼承 BaseAIService
- * 因為 GitHub Copilot 不需要 API Key（認證由 CLI Server 處理）
+ * 因為 GitHub Copilot 的認證機制與傳統 API Key 不同
  */
 export class GithubCopilotService implements AIService {
+    private githubToken: string;
     private serverAddress: string;
     private model: string;
     private timeout: number;
@@ -15,12 +19,28 @@ export class GithubCopilotService implements AIService {
 
     /**
      * 建立 GitHub Copilot 服務實例
-     * @param serverAddress - CLI Server 位址 (格式: host:port)。若未提供，則使用 Build Agent 內的 GitHub Copilot CLI
+     * @param githubToken - GitHub Token (格式: github_pat_xxx, gho_xxx, ghu_xxx)。用於 Token 認證模式
+     * @param serverAddress - CLI Server 位址 (格式: host:port)。用於遠端 CLI Server 模式
      * @param model - 模型名稱，預設為 'gpt-4o'
      * @param timeout - 請求超時時間（毫秒）。若未提供，預設為 60000 ms (1分鐘)
-     * @throws {Error} 當 serverAddress 格式錯誤時拋出錯誤
+     * @throws {Error} 當參數格式錯誤或參數互斥時拋出錯誤
      */
-    constructor(serverAddress?: string, model: string = 'gpt-4o', timeout?: number) {
+    constructor(githubToken?: string, serverAddress?: string, model: string = 'gpt-4o', timeout?: number) {
+        // 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
+        if (githubToken && githubToken.trim() !== '' && serverAddress && serverAddress.trim() !== '') {
+            throw new Error('⛔ GitHub Token and CLI Server Address cannot be provided at the same time. Please choose one authentication method.');
+        }
+
+        // Token 類型驗證：不支援 Classic personal access token (ghp_)
+        if (githubToken && githubToken.trim() !== '') {
+            if (githubToken.startsWith('ghp_')) {
+                throw new Error('⛔ Classic personal access tokens (ghp_) are not supported. Please use Fine-grained personal access token (github_pat_).');
+            }
+            this.githubToken = githubToken.trim();
+        } else {
+            this.githubToken = '';
+        }
+
         // 如果提供了 serverAddress，則驗證格式
         if (serverAddress && serverAddress.trim() !== '') {
             this.parseServerAddress(serverAddress);
@@ -146,6 +166,9 @@ export class GithubCopilotService implements AIService {
                 throw new Error("⛔ Could not connect to Copilot CLI server.");
             } else if (error.message.includes("timeout")) {
                 throw new Error("⛔ GitHub Copilot SDK timeout error.");
+            } else if (error.message.includes("stream was destroyed")) {
+                // 提供更詳細的 stream 錯誤說明
+                throw new Error("⛔ GitHub Copilot connection interrupted. This may be caused by network issues or authentication problems. Please check your connection and try again.");
             } else {
                 throw new Error(`⛔ GitHub Copilot SDK error: ${error.message}`);
             }
@@ -158,6 +181,7 @@ export class GithubCopilotService implements AIService {
     /**
      * 初始化 Copilot Client（延遲初始化）
      * 只在首次呼叫 generateComment 時建立連接
+     * 根據參數組合選擇認證模式：Token 模式、遠端 Server 模式、本機 CLI 模式
      */
     private async initializeClient(): Promise<void> {
         if (this.client) {
@@ -168,21 +192,43 @@ export class GithubCopilotService implements AIService {
             // 動態引入 GitHub Copilot SDK
             const { CopilotClient } = await import('@github/copilot-sdk');
 
-            // 根據是否有 serverAddress 決定連接方式
-            if (this.serverAddress) {
+            // 根據參數組合決定連接模式
+            if (this.githubToken) {
+                // Token 模式：使用使用者提供的 GitHub Token
+                this.client = new CopilotClient({
+                    githubToken: this.githubToken,
+                    useLoggedInUser: false
+                });
+                console.log(`✅ Connected to GitHub Copilot using provided token`);
+            } else if (this.serverAddress) {
+                // 遠端 CLI Server 模式：連接到指定的 CLI Server
                 this.client = new CopilotClient({
                     cliUrl: this.serverAddress,
                 });
                 console.log(`✅ Connected to GitHub Copilot CLI Server at ${this.serverAddress}`);
             } else {
+                // 本機 CLI 模式：使用 Build Agent 預先設定的授權
                 this.client = new CopilotClient();
                 console.log(`✅ Connected to GitHub Copilot CLI (local agent)`);
             }
         } catch (error: any) {
-            const location = this.serverAddress || 'local agent';
-            throw new Error(
-                `⛔ Failed to connect to GitHub Copilot CLI at ${location}: ${error.message}`
-            );
+            // 根據認證模式提供不同的錯誤訊息
+            if (this.githubToken) {
+                // Token 認證相關錯誤
+                if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    throw new Error('⛔ Invalid or expired GitHub Token. Please check your token and try again.');
+                } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+                    throw new Error('⛔ GitHub Token does not have required \'Copilot\' Read permission. Please update token permissions in Account permissions > Copilot > Access: Read-only.');
+                } else {
+                    throw new Error(`⛔ Failed to authenticate with GitHub Token: ${error.message}`);
+                }
+            } else if (this.serverAddress) {
+                // Server 連接相關錯誤
+                throw new Error(`⛔ Failed to connect to CLI Server at ${this.serverAddress}: ${error.message}`);
+            } else {
+                // 本機 CLI 相關錯誤
+                throw new Error(`⛔ Failed to connect to GitHub Copilot CLI (local agent): ${error.message}`);
+            }
         }
     }
 
@@ -255,7 +301,16 @@ export class GithubCopilotService implements AIService {
      */
     private logGenerationStart(config?: GenerateConfig): void {
         console.log('🚩 Generating response using GitHub Copilot...');
-        console.log(`+ Server: ${this.serverAddress || 'local agent'}`);
+
+        // 根據認證模式顯示不同的資訊
+        if (this.githubToken) {
+            console.log(`+ Authentication: Token`);
+        } else if (this.serverAddress) {
+            console.log(`+ Server: ${this.serverAddress}`);
+        } else {
+            console.log(`+ Server: local agent`);
+        }
+
         console.log(`+ Model: ${this.model}`);
         console.log(`+ Timeout: ${this.timeout}ms`);
         console.log(`+ Max Output Tokens: ${config?.maxOutputTokens}`);
@@ -284,7 +339,16 @@ export class GithubCopilotService implements AIService {
         console.log(prompt);
         console.log('='.repeat(80));
         console.log('⚙️  Generation Config:');
-        console.log(`   - Server: ${this.serverAddress || 'local agent'}`);
+
+        // 根據認證模式顯示不同的資訊
+        if (this.githubToken) {
+            console.log(`   - Authentication: Token`);
+        } else if (this.serverAddress) {
+            console.log(`   - Server: ${this.serverAddress}`);
+        } else {
+            console.log(`   - Server: local agent`);
+        }
+
         console.log(`   - Model: ${this.model}`);
         console.log(`   - Timeout: ${this.timeout}ms`);
         console.log(`   - Temperature: ${config?.temperature ?? 'default'}`);

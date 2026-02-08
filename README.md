@@ -38,44 +38,96 @@ Different AI Providers have different prerequisites:
 | OpenAI | Apply for API Key | Get API Key from [OpenAI Platform](https://platform.openai.com/api-keys) |
 | Grok (xAI) | Apply for API Key | Get API Key from [xAI Console](https://console.x.ai/) |
 | Claude (Anthropic) | Apply for API Key | Get API Key from [Anthropic Console](https://console.anthropic.com/) |
-| **GitHub Copilot** | Deploy CLI Server | See [GitHub Copilot CLI Prerequisites](#github-copilot-cli-prerequisites) below |
+| **GitHub Copilot** | GitHub Token or CLI Setup | See [GitHub Copilot Prerequisites](#github-copilot-prerequisites) below |
 
-### GitHub Copilot CLI Prerequisites
+### GitHub Copilot Prerequisites
 
-If you or your organization has a GitHub Copilot subscription (Individual, Business, or Enterprise), you can use the internal CLI Server for PR Code Review.
+If you or your organization has a GitHub Copilot subscription (Individual, Business, or Enterprise), you can use GitHub Copilot for PR Code Review in three different modes.
 
-#### Applicable Scenarios
-- Have an active GitHub Copilot subscription
-- Want to reuse existing Copilot infrastructure
-- Need unified AI toolchain experience
+#### Three Usage Modes
 
-#### CLI Server Setup Steps
+The extension automatically detects which mode to use based on the parameters you provide:
+
+| Mode | Use Case | Parameters | Prerequisites |
+|------|----------|------------|---------------|
+| **Token Mode** | Cloud CI (Azure Pipelines Hosted Agents) | Provide **GitHub Token** only | • GitHub Copilot subscription<br>• Fine-grained Personal Access Token with Copilot Read permission<br>• **CI Token Mode**: Run `npm install -g @github/copilot` in CI before this task ([Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)) |
+| **Remote CLI Server** | Centralized architecture | Provide **CLI Server Address** only | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed (`npm install -g @github/copilot`)<br>• Completed authentication (`copilot auth login`)<br>• Network connectivity between Agent and Server |
+| **Local CLI** | On-premise CI with pre-configured agents | Don't provide Token or Server Address | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed on Build Agent (`npm install -g @github/copilot`)<br>• Completed authentication via `copilot auth login` |
+
+**Important**: GitHub Token and CLI Server Address **cannot be used together**. Choose one authentication method only.
+
+#### Token Mode Setup (Recommended for Cloud CI)
+
+1. **Obtain Fine-grained Personal Access Token**
+
+   Go to [GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
+
+   Create a new token with:
+   - **Permissions**: Account permissions → Copilot → Access: **Read-only**
+   - **Token format**: `github_pat_` (Fine-grained) or `gho_`, `ghu_` (other supported types)
+   - **Not supported**: Classic tokens (`ghp_`)
+
+2. **Store Token as Secret Variable**
+
+   In Azure DevOps Pipeline, add the token as a secret variable to prevent exposure in logs.
+
+3. **Configure CI Pipeline (Token Mode)**
+
+   **Important for CI Token Mode**: Before using this task, install GitHub Copilot CLI:
+   ```yaml
+   - script: npm install -g @github/copilot
+     displayName: 'Install GitHub Copilot CLI'
+   ```
+   Reference: [GitHub Copilot CLI Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
+
+4. **Configure Pipeline Task**
+   - **AI Provider**: Select `GitHub Copilot`
+   - **GitHub Copilot Token**: Enter your Fine-grained Personal Access Token (or use secret variable)
+   - **CLI Server Address**: Leave empty
+   - **Model Name**: (Optional) Defaults to `gpt-4o`
+
+#### Remote CLI Server & Local CLI Mode Setup
+
+Both Remote CLI Server and Local CLI modes require the same initial setup:
 
 1. **Install GitHub Copilot CLI**
    ```bash
-   npm install -g @github/copilot-sdk
+   npm install -g @github/copilot
    ```
 
-2. **Start CLI Server Mode**
-   
+2. **Authenticate with GitHub**
+   ```bash
+   copilot auth login
+   ```
+
+**For Remote CLI Server Mode Only:**
+
+3. **Start CLI Server**
+
    Start the CLI Server on an internal network server:
    ```bash
    copilot --headless --port 8080
-   ```  
+   ```
 
-3. **Configure in Pipeline Task**
+4. **Configure Pipeline Task**
    - **AI Provider**: Select `GitHub Copilot`
-   - **Network Type**: Select `Intranet`
-   - **CLI Server Address**: (Optional) Enter `your-server-ip:8080` or `your-domain:8080`. If not provided, will use GitHub Copilot CLI in Build Agent
+   - **GitHub Copilot Token**: Leave empty
+   - **CLI Server Address**: Enter `your-server-ip:8080` or `your-domain:8080`
    - **Model Name**: (Optional) Defaults to `gpt-4o`
 
-#### Important Notes
-- **Remote Server Mode**: When CLI Server Address is provided, ensure Pipeline Agent and CLI Server are on the same internal network or can connect to each other. CLI Server must be running when Pipeline executes.
-- **Local CLI Mode**: When CLI Server Address is not provided, will use the authenticated GitHub Copilot CLI in the Build Agent. Requirements:
-  - GitHub Copilot CLI must be installed on Build Agent
-  - Must have completed authentication via `copilot auth login`
-  - Agent must have GitHub Copilot access permission
-- Currently only supports Intranet mode; Internet mode will be available in future versions
+**For Local CLI Mode:**
+
+3. **Configure Pipeline Task**
+   - **AI Provider**: Select `GitHub Copilot`
+   - **GitHub Copilot Token**: Leave empty
+   - **CLI Server Address**: Leave empty
+   - **Model Name**: (Optional) Defaults to `gpt-4o`
+
+#### Security Best Practices
+- Always use **Secret Variables** to store GitHub Tokens
+- Use **minimum required permissions** (Copilot Read-only)
+- Rotate tokens periodically
+- Never commit tokens to source control
 
 ---
 
@@ -112,8 +164,7 @@ Below are all input parameters supported by this Task:
   
 | Label | Type | Required | Default | Description |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot  (Preview). |
-| GitHub Copilot Network Type | pickList | Conditional | Intranet | Select GitHub Copilot connection type. Options: Intranet, Internet (Coming Soon). Shown when GitHub Copilot is selected. |
+| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot. |
 | AI Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
 | Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
 | OpenAI Model Name | string | Conditional | gpt-4o | Enter the OpenAI model name (e.g., gpt-4o, gpt-4o-mini). Required when AI Provider is OpenAI. |
@@ -122,9 +173,10 @@ Below are all input parameters supported by this Task:
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
 | Claude Model Name | string | Conditional | claude-haiku-4-5 | Enter the Claude model name (e.g., claude-haiku-4-5). Required when AI Provider is Claude. |
 | Claude API Key | string | Conditional | (empty) | Enter your Claude API Key. Required when AI Provider is Claude. |
-| GitHub Copilot CLI Server Address | string | No | (empty) | (Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080 or copilot.internal.company.com:8080. If not provided, will use GitHub Copilot CLI in Build Agent. Visible when GitHub Copilot + Intranet is selected. |
-| GitHub Copilot Model Name | string | No | gpt-4o | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-4o. Shown when GitHub Copilot + Intranet is selected. |
-| GitHub Copilot Request Timeout (ms) | string | No | 120000 | Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute). Shown when GitHub Copilot + Intranet is selected. |
+| **GitHub Copilot Token** | string | No | (empty) | **(Optional) GitHub Fine-grained Personal Access Token** (format: `github_pat_xxx`) for authenticating with GitHub Copilot service. Get from GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens. **Required permissions**: Account permissions → Copilot → Access: Read-only. **Note**: Classic tokens (`ghp_`) are not supported. **Cannot be used together with CLI Server Address**. Visible when GitHub Copilot is selected. |
+| GitHub Copilot CLI Server Address | string | No | (empty) | (Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080 or copilot.internal.company.com:8080. If not provided and no Token is provided, will use GitHub Copilot CLI in Build Agent. **Cannot be used together with GitHub Token**. Visible when GitHub Copilot is selected. |
+| GitHub Copilot Model Name | string | No | gpt-4o | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-4o. Visible when GitHub Copilot is selected. |
+| GitHub Copilot Request Timeout (ms) | string | No | 120000 | Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute). Visible when GitHub Copilot is selected. |
 | System Instruction Source | pickList | Yes | Inline | Select the source of the system instruction. Options: Inline, File. |
 | System Prompt File | string | No | (empty) | Path to the system prompt file. Supported formats: .md, .txt, .json, .yaml, .yml, .xml, .html. Optional. If the file is not found or empty, falls back to inline instruction. |
 | System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. Used when System Instruction Source is 'Inline'. Optional. If empty, a default code review instruction will be used automatically. |

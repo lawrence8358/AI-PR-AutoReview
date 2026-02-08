@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 3,
-        "Patch": 6
+        "Patch": 12
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -105,16 +105,13 @@
             "visibleRule": "inputAiProvider == Claude"
         },
         {
-            "name": "inputGitHubCopilotNetworkType",
-            "type": "pickList",
-            "label": "GitHub Copilot Network Type",
-            "defaultValue": "Intranet",
-            "required": true,
-            "helpMarkDown": "Select GitHub Copilot connection type. Currently only supports Intranet mode (connect to internal CLI Server or use local CLI).",
-            "visibleRule": "inputAiProvider == GitHubCopilot",
-            "options": {
-                "Intranet": "Intranet"
-            }
+            "name": "inputGitHubCopilotToken",
+            "type": "string",
+            "label": "GitHub Copilot Token",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "GitHub Fine-grained Personal Access Token (github_pat_xxx) for authenticating with GitHub Copilot service. Required permissions: Account permissions > Copilot > Access: Read-only. Get from GitHub Settings > Developer settings > Personal access tokens > Fine-grained tokens. **Note: Classic tokens (ghp_) are not supported. Cannot be used together with CLI Server Address.**",
+            "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
             "name": "inputGitHubCopilotServerAddress",
@@ -122,8 +119,8 @@
             "label": "GitHub Copilot CLI Server Address",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "(Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080. If not provided, will use GitHub Copilot CLI in Build Agent.",
-            "visibleRule": "inputAiProvider == GitHubCopilot && inputGitHubCopilotNetworkType == Intranet"
+            "helpMarkDown": "(Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080. If not provided, will use GitHub Copilot CLI in Build Agent. **Note: Cannot be used together with GitHub Token.**",
+            "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
             "name": "inputGitHubCopilotModelName",
@@ -132,7 +129,7 @@
             "defaultValue": "gpt-4o",
             "required": true,
             "helpMarkDown": "Optional. Defaults to gpt-4o.",
-            "visibleRule": "inputAiProvider == GitHubCopilot && inputGitHubCopilotNetworkType == Intranet"
+            "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
             "name": "inputGitHubCopilotTimeout",
@@ -141,7 +138,7 @@
             "defaultValue": "120000",
             "required": false,
             "helpMarkDown": "Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute).",
-            "visibleRule": "inputAiProvider == GitHubCopilot && inputGitHubCopilotNetworkType == Intranet"
+            "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
             "name": "inputSystemInstructionSource",

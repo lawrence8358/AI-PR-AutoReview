@@ -112,14 +112,15 @@ export class Main {
      * @param provider - AI Provider 名稱
      * @returns { modelName, modelKey, serverAddress }
      */
-    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; serverAddress?: string } {
+    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } {
         const providerLower = provider.toLowerCase();
 
         if (this.isDebugMode) {
             const modelName = process.env.ModelName ?? this.getDefaultModelName(providerLower);
             const modelKey = this.getModelKeyFromEnv(providerLower);
+            const githubToken = providerLower === 'githubcopilot' ? process.env.GitHubCopilotToken : undefined;
             const serverAddress = providerLower === 'githubcopilot' ? process.env.GitHubCopilotServerAddress : undefined;
-            return { modelName, modelKey, serverAddress };
+            return { modelName, modelKey, githubToken, serverAddress };
         } else {
             return this.getModelConfigFromTaskInput(providerLower);
         }
@@ -147,13 +148,13 @@ export class Main {
         return process.env[keyMap[provider]] ?? '';
     }
 
-    private getModelConfigFromTaskInput(provider: string): { modelName: string; modelKey: string; serverAddress?: string } {
-        const configMap: Record<string, { nameKey: string; apiKeyKey: string; defaultName: string; serverAddressKey?: string }> = {
+    private getModelConfigFromTaskInput(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } {
+        const configMap: Record<string, { nameKey: string; apiKeyKey: string; defaultName: string; githubTokenKey?: string; serverAddressKey?: string }> = {
             'openai': { nameKey: 'inputOpenAIModelName', apiKeyKey: 'inputOpenAIApiKey', defaultName: 'gpt-4.1-nano' },
             'grok': { nameKey: 'inputGrokModelName', apiKeyKey: 'inputGrokApiKey', defaultName: 'grok-3-mini' },
             'claude': { nameKey: 'inputClaudeModelName', apiKeyKey: 'inputClaudeApiKey', defaultName: 'claude-haiku-4-5' },
             'google': { nameKey: 'inputModelName', apiKeyKey: 'inputModelKey', defaultName: 'gemini-2.5-flash' },
-            'githubcopilot': { nameKey: 'inputGitHubCopilotModelName', apiKeyKey: '', defaultName: 'gpt-4o', serverAddressKey: 'inputGitHubCopilotServerAddress' }
+            'githubcopilot': { nameKey: 'inputGitHubCopilotModelName', apiKeyKey: '', defaultName: 'gpt-4o', githubTokenKey: 'inputGitHubCopilotToken', serverAddressKey: 'inputGitHubCopilotServerAddress' }
         };
 
         const config = configMap[provider];
@@ -161,14 +162,17 @@ export class Main {
             throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
         }
 
-        const result: { modelName: string; modelKey: string; serverAddress?: string } = {
+        const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } = {
             modelName: tl.getInput(config.nameKey, false) ?? config.defaultName,
             modelKey: config.apiKeyKey ? (tl.getInput(config.apiKeyKey, true) ?? '') : ''
         };
 
-        // GitHub Copilot 需要讀取 serverAddress
+        // GitHub Copilot 需要讀取 githubToken 和 serverAddress
+        if (config.githubTokenKey) {
+            result.githubToken = tl.getInput(config.githubTokenKey, false) ?? '';
+        }
         if (config.serverAddressKey) {
-            result.serverAddress = tl.getInput(config.serverAddressKey, true) ?? '';
+            result.serverAddress = tl.getInput(config.serverAddressKey, false) ?? '';
         }
 
         return result;
@@ -183,7 +187,14 @@ export class Main {
         const inputAiProvider = this.getInputValue('AiProvider', 'inputAiProvider', true, 'Google');
 
         // 取得 AI Provider 設定
-        const { modelName, modelKey, serverAddress } = this.getAIProviderConfig(inputAiProvider);
+        const { modelName, modelKey, githubToken, serverAddress } = this.getAIProviderConfig(inputAiProvider);
+
+        // GitHub Copilot 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
+        if (inputAiProvider.toLowerCase() === 'githubcopilot') {
+            if (githubToken && githubToken.trim() !== '' && serverAddress && serverAddress.trim() !== '') {
+                throw new Error('⛔ GitHub Token 和 CLI Server Address 不能同時使用，請選擇其中一種認證方式');
+            }
+        }
 
         // 取得系統指令
         const systemInstructionSource = this.getInputValue('SystemInstructionSource', 'inputSystemInstructionSource', false, 'Inline');
@@ -224,6 +235,7 @@ export class Main {
             aiProvider: inputAiProvider,
             modelName,
             modelKey,
+            githubToken,
             serverAddress,
             timeout,
             systemInstruction,
@@ -462,9 +474,10 @@ async function run() {
         const config = {
             apiKey: inputs.modelKey,
             modelName: inputs.modelName,
+            githubToken: inputs.githubToken,
             serverAddress: inputs.serverAddress,
             timeout: inputs.timeout
-        }; 
+        };
         aiProvider.registerService(inputs.aiProvider, config);
         
         const devOpsProvider = new DevOpsProviderService();
@@ -496,10 +509,11 @@ async function run() {
         );
         console.log('🎉 AI Pull Request Code Review completed successfully!');
         tl.setResult(tl.TaskResult.Succeeded, 'AI Code Review completed successfully');
-
+        process.exit();
     } catch (err: any) {
         console.error(`😡 Task failed with error: ${err.message}`);
         tl.setResult(tl.TaskResult.Failed, `Task failed with error: ${err.message}`);
+        process.exit(1);
     }
 }
 

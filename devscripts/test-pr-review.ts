@@ -23,7 +23,8 @@ interface TestOptions {
     modelName: string;
     modelKey: string;
     // For GitHub Copilot
-    serverAddress?: string; 
+    githubToken?: string;
+    serverAddress?: string;
     timeout?: number;
     // For Azure DevOps
     organizationUrl?: string;
@@ -90,6 +91,11 @@ class PRReviewTester {
                 // 指定 AI API 金鑰
                 case '--key':
                     options.modelKey = value;
+                    i++;
+                    break;
+                // 指定 GitHub Token (用於 GitHub Copilot Token 認證模式)
+                case '--github-token':
+                    options.githubToken = value;
                     i++;
                     break;
                 // 指定 GitHub Copilot CLI Server 位址
@@ -161,11 +167,24 @@ class PRReviewTester {
             process.exit(1);
         }
 
-        // GitHub Copilot 不需要 API key，serverAddress 為可選（未提供時使用本機 CLI）
+        // GitHub Copilot 不需要 API key，但可以使用 Token 或 serverAddress（擇一）
         if (options.aiProvider.toLowerCase() === 'githubcopilot') {
+            // 從環境變數讀取 GitHub Token（如果命令列未提供）
+            if (!options.githubToken) {
+                options.githubToken = process.env.GITHUB_COPILOT_TOKEN || process.env.GitHubCopilotToken || '';
+            }
+            // 從環境變數讀取 Server Address（如果命令列未提供）
             if (!options.serverAddress) {
                 options.serverAddress = process.env.GitHubCopilotServerAddress || '';
             }
+
+            // 參數互斥驗證
+            if (options.githubToken && options.githubToken.trim() !== '' &&
+                options.serverAddress && options.serverAddress.trim() !== '') {
+                console.error('⛔ GitHub Token 和 CLI Server Address 不能同時使用，請選擇其中一種認證方式');
+                process.exit(1);
+            }
+
             options.modelKey = ''; // GitHub Copilot 不使用 API key
         } else {
             if (!options.modelKey) {
@@ -243,6 +262,7 @@ AI 提供者參數:
   --ai <PROVIDER>          'claude', 'openai', 'grok', 'google', 'githubcopilot'
   --model <NAME>           Model name (如: claude-haiku-4-5, gpt-4o)
   --key <KEY>              API key (或使用環境變數)
+  --github-token <TOKEN>   GitHub Token (用於 GitHub Copilot Token 認證模式)
   --server-address <ADDR>  GitHub Copilot CLI Server 位址 (格式: host:port)
 
 功能開關:
@@ -299,6 +319,7 @@ AI 提供者參數:
             aiProvider.registerService(this.options.aiProvider, {
                 apiKey: this.options.modelKey,
                 modelName: this.options.modelName,
+                githubToken: this.options.githubToken,
                 serverAddress: this.options.serverAddress,
                 timeout: this.options.timeout
             });
@@ -329,6 +350,7 @@ AI 提供者參數:
                 aiProvider: this.options.aiProvider,
                 modelName: this.options.modelName,
                 modelKey: this.options.modelKey,
+                githubToken: this.options.githubToken,
                 serverAddress: this.options.serverAddress,
                 timeout: this.options.timeout,
                 systemInstruction: systemInstruction,
@@ -397,7 +419,13 @@ AI 提供者參數:
         console.log(`  • AI Provider: ${this.options.aiProvider}`);
         console.log(`  • Model: ${this.options.modelName}`);
         if (this.options.aiProvider.toLowerCase() === 'githubcopilot') {
-            console.log(`  • CLI Connection: ${this.options.serverAddress || 'local agent'}`);
+            if (this.options.githubToken && this.options.githubToken.trim() !== '') {
+                console.log(`  • Authentication: Token`);
+            } else if (this.options.serverAddress && this.options.serverAddress.trim() !== '') {
+                console.log(`  • CLI Connection: ${this.options.serverAddress}`);
+            } else {
+                console.log(`  • CLI Connection: local agent`);
+            }
         }
         console.log(`  • Throttle Mode: ${this.options.enableThrottleMode ? '✓ Enabled' : '✗ Disabled'}`);
         console.log(`  • Incremental Diff: ${this.options.enableIncrementalDiff ? '✓ Enabled' : '✗ Disabled'}`);

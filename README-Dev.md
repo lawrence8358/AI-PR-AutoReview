@@ -100,9 +100,13 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts [參數]
 - `--repo <REPO>` - Repository name
 - `--token <TOKEN>` - GitHub token
 
-**GitHub Copilot 參數**
-- `--serverAddress` - GitHub Copilot CLI Server 位址
-- `--timeout` - GitHub Copilot CLI 請求超時時間 (毫秒) 
+**GitHub Copilot 參數**（三種模式擇一使用）
+- `--github-token <TOKEN>` - GitHub Fine-grained Personal Access Token（Token 模式）
+- `--server-address <ADDRESS>` - GitHub Copilot CLI Server 位址（遠端 Server 模式）
+- 不提供以上參數 - 使用本機 CLI（Local 模式）
+- `--timeout` - GitHub Copilot CLI 請求超時時間 (毫秒)
+
+**注意**：`--github-token` 和 `--server-address` 不能同時使用 
 
 **AI 提供者參數**：
 - `--ai <PROVIDER>` - AI 提供者：'claude', 'openai', 'grok', 'google'（預設：claude）
@@ -157,20 +161,49 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --throttle false
 ```
 
-2. **Azure DevOps + GitHub Copilot**
+4. **Azure DevOps + GitHub Copilot (Token 模式)**
 ```bash
 npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --provider azure \
-  --token Your_AzureDevops_Token
+  --token Your_AzureDevops_Token \
   --pr 20 \
   --org https://dev.azure.com/myorg \
   --project MyProject \
   --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
   --ai githubcopilot \
-  --model gpt-5-mini \
-  --throttle true \
+  --model gpt-4o \
+  --github-token github_pat_YOUR_TOKEN_HERE \
+  --throttle true
+```
+
+5. **Azure DevOps + GitHub Copilot (遠端 Server 模式)**
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts \
+  --provider azure \
+  --token Your_AzureDevops_Token \
+  --pr 20 \
+  --org https://dev.azure.com/myorg \
+  --project MyProject \
+  --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
+  --ai githubcopilot \
+  --model gpt-4o \
   --server-address 10.10.10.111:8080 \
-  --timeout 120000
+  --timeout 120000 \
+  --throttle true
+```
+
+6. **Azure DevOps + GitHub Copilot (本機 CLI 模式)**
+```bash
+npx ts-node DEVSCRIPTS/test-pr-review.ts \
+  --provider azure \
+  --token Your_AzureDevops_Token \
+  --pr 20 \
+  --org https://dev.azure.com/myorg \
+  --project MyProject \
+  --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
+  --ai githubcopilot \
+  --model gpt-4o \
+  --throttle true
 ```
 
 **輸出說明**：
@@ -205,7 +238,8 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
 | OpenAIAPIKey | 選用 | sk-... | OpenAI API Key，若使用 OpenAI 時，此欄位必填 |
 | GrokAPIKey | 選用 | xai-... | Grok (xAI) API Key，若使用 Grok 時，此欄位必填 |
 | ClaudeAPIKey | 選用 | sk-ant-... | Claude API Key，若使用 Claude 時，此欄位必填 |
-| GitHubCopilotServerAddress | 選用 | localhost:8080 | GitHub Copilot CLI Server 位址（格式: host:port）。若未提供，將使用本機的 GitHub Copilot CLI（需先完成 `copilot auth login`） |
+| GitHubCopilotToken | 選用 | github_pat_xxx | GitHub Fine-grained Personal Access Token（格式：github_pat_xxx），用於 Token 模式認證。**不能與 GitHubCopilotServerAddress 同時使用** |
+| GitHubCopilotServerAddress | 選用 | localhost:8080 | GitHub Copilot CLI Server 位址（格式: host:port）。若未提供且未提供 Token，將使用本機的 GitHub Copilot CLI（需先完成 `copilot auth login`）。**不能與 GitHubCopilotToken 同時使用** |
 | ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-4o、grok-beta、claude-haiku-4-5） |
 | SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令 |
 | PromptTemplate | 必要 | {code_changes} | Prompt 範本，index.ts 以 `{code_changes}` 作為佔位符 |
@@ -234,8 +268,15 @@ GrokAPIKey=PASTE_YOUR_GROK_KEY
 ClaudeAPIKey=PASTE_YOUR_CLAUDE_KEY
 AiProvider=Google
 ModelName=gemini-2.5-flash
-# GitHub Copilot (選用：若未填寫則使用本機 CLI)
-GitHubCopilotServerAddress=localhost:8080
+
+# GitHub Copilot 認證模式（三選一，不能同時使用）：
+# 模式 1: Token 模式（雲端 CI）
+# GitHubCopilotToken=github_pat_YOUR_TOKEN_HERE
+
+# 模式 2: 遠端 CLI Server
+# GitHubCopilotServerAddress=localhost:8080
+
+# 模式 3: 本機 CLI（不填寫任何參數，使用已登入的 CLI）
 
 SystemInstruction=你是一位資深軟體工程師，請協助進行程式碼審查與分析。
 PromptTemplate={code_changes}
@@ -398,33 +439,132 @@ GitHub Copilot 的整合與其他 AI Providers 有一些不同：
 
 1. **不繼承 BaseAIService**
    - `GithubCopilotService` 直接實作 `AIService` 介面
-   - 原因：GitHub Copilot 不需要 API Key（認證由 CLI Server 處理）
-   - BaseAIService 的 constructor 會強制驗證 API Key
+   - 原因：GitHub Copilot 支援 Token 認證，不使用傳統 API Key
+   - BaseAIService 的 constructor 會強制驗證 API Key，不適用於此情境
 
 2. **使用官方 SDK**
-   - 使用 `@github/copilot-sdk` 連接到 CLI Server
+   - 使用 `@github/copilot-sdk` 連接到 CLI Server 或使用 Token 認證
    - SDK 版本：0.1.21（Technical Preview）
 
 3. **延遲初始化**
    - Client 連接在首次呼叫 `generateComment()` 時建立
    - 避免啟動時連接失敗影響整體服務
 
+### 認證機制
+
+GitHub Copilot 支援三種認證模式，根據提供的參數自動判斷：
+
+#### 1. Token 模式（適用於雲端 CI）
+**參數組合**：提供 `githubToken`，不提供 `serverAddress`
+
+**SDK 配置**：
+```typescript
+new CopilotClient({
+    githubToken: 'user-provided-token',
+    useLoggedInUser: false
+})
+```
+
+**支援的 Token 類型**：
+- `gho_` - OAuth user access tokens
+- `ghu_` - GitHub App user access tokens
+- `github_pat_` - Fine-grained personal access tokens（推薦）
+
+**不支援的 Token 類型**：
+- `ghp_` - Classic personal access tokens（已廢棄）
+
+**必要權限**：
+- Account permissions → Copilot → Access: **Read-only**
+
+**CI Token 模式重要注意事項**：
+當使用 Token 模式時，CI Pipeline 必須先安裝 GitHub Copilot CLI：
+```yaml
+- script: npm install -g @github/copilot
+  displayName: 'Install GitHub Copilot CLI'
+```
+參考：[GitHub Copilot CLI 安裝指南](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
+
+#### 2. 遠端 CLI Server 模式（適用於集中式架構）
+**參數組合**：不提供 `githubToken`，提供 `serverAddress`
+
+**SDK 配置**：
+```typescript
+new CopilotClient({
+    cliUrl: 'server-address'
+})
+```
+
+**Server 位址格式**：
+- `host:port`
+- 範例：`localhost:8080`、`192.168.1.100:8080`、`copilot.internal.company.com:8080`
+
+#### 3. 本機 CLI 模式（適用於預先設定的 Build Agent）
+**參數組合**：不提供 `githubToken`，不提供 `serverAddress`
+
+**SDK 配置**：
+```typescript
+new CopilotClient()  // 使用預設配置
+```
+
+**前置需求**：
+- Build Agent 已安裝 GitHub Copilot CLI
+- 已完成身份驗證（`copilot auth login`）
+
 ### 關鍵實作細節
 
-1. **Server 位址設定**
-   - 使用 `cliUrl` 選項連接到現有 CLI Server
-   - 支援格式：`host:port`、`localhost:8080`、`127.0.0.1:8080`
+1. **參數互斥驗證（三層設計）**
 
-2. **Session 管理**
+   為確保 `githubToken` 和 `serverAddress` 不會同時使用，實作了三層驗證：
+
+   **層級 1：task.json（UI 層）**
+   - 在 helpMarkDown 中標註互斥關係
+   - 提示使用者僅能選擇一種認證方式
+
+   **層級 2：index.ts（主程式層）**
+   ```typescript
+   if (githubToken && serverAddress) {
+       throw new Error('⛔ GitHub Token 和 CLI Server Address 不能同時使用，請選擇其中一種認證方式');
+   }
+   ```
+   - 讀取參數後立即驗證
+   - 早期失敗（Fail Fast），節省 Pipeline 執行時間
+
+   **層級 3：GithubCopilotService（服務層）**
+   ```typescript
+   constructor(githubToken?: string, serverAddress?: string, ...) {
+       if (githubToken && serverAddress) {
+           throw new Error('⛔ GitHub Token 和 CLI Server Address 不能同時使用，請選擇其中一種認證方式');
+       }
+   }
+   ```
+   - 防止直接使用 Service 繞過驗證
+   - 深度防禦（Defense in Depth）
+
+2. **Token 類型驗證**
+   ```typescript
+   if (this.githubToken?.startsWith('ghp_')) {
+       throw new Error('⛔ Classic personal access tokens (ghp_) are not supported. Please use Fine-grained personal access token (github_pat_).');
+   }
+   ```
+   - 在初始化時檢查 Token 前綴
+   - 提供清楚的錯誤訊息指導使用者
+
+3. **Session 管理**
    - 每個請求建立獨立的 session
    - 使用 `systemMessage.content` 傳遞 system instruction
    - 使用 `sendAndWait()` 發送並等待回應
    - 完成後呼叫 `session.destroy()` 清理資源
 
-3. **Token Usage 追蹤**
+4. **Token Usage 追蹤**
    - 嘗試從 SDK 回應中提取 usage 資訊
    - 若不可用，使用估算（字元數 / 4）
    - 日誌明確標註是實際值或估算值
+
+5. **日誌輸出**
+   - 根據認證模式顯示不同的連接日誌：
+     - Token 模式：`+ Authentication: Token`
+     - Server 模式：`+ Server: {serverAddress}`
+     - Local 模式：`+ Server: local agent`
 
 ### 現有限制
 
@@ -432,31 +572,40 @@ GitHub Copilot 的整合與其他 AI Providers 有一些不同：
    - API 可能變動需要調整
    - 已設計彈性介面便於未來調整
 
-2. **僅支援內部網路模式**
-   - 網際網路模式將在未來版本提供
-   - 將整合 MCP Server 連接雲端 Copilot
-
-3. **不支援 Temperature 和 MaxTokens**
+2. **不支援 Temperature 和 MaxTokens**
    - SDK 不直接支援這些參數
    - 未來可能需透過 provider config 設定
 
+### Token 安全性最佳實踐
+
+1. **使用 Secret Variables**
+   - 在 Azure DevOps Pipeline 中將 Token 設為秘密變數
+   - Pipeline 會自動在日誌中遮罩 Token
+
+2. **最小權限原則**
+   - 僅授予 Copilot Read 權限
+   - 不要授予不必要的額外權限
+
+3. **定期輪替 Token**
+   - 建議每 90 天輪替一次
+   - 使用短期 Token 降低風險
+
+4. **切勿提交至版本控制**
+   - 確保 .env 檔案在 .gitignore 中
+   - 使用環境變數或秘密管理服務
+
 ### 測試建議
 
-#### 方案 1：使用遠端 CLI Server
-1. **設定 .env**
+#### 方案 1：使用 Token 模式（推薦用於 CI 測試）
+1. **取得 Fine-grained Personal Access Token**
+   - 前往 [GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
+   - 建立 Token 並授予 Copilot Read 權限
+
+2. **設定 .env**
    ```properties
    AiProvider=GitHubCopilot
-   GitHubCopilotServerAddress=localhost:8080
+   GitHubCopilotToken=github_pat_YOUR_TOKEN_HERE
    ModelName=gpt-4o
-   ```
-
-2. **啟動測試 CLI Server**
-   ```bash
-   # 安裝 SDK
-   npm install -g @github/copilot-sdk
-   
-   # 啟動 server 模式
-   copilot --headless --port 8080
    ```
 
 3. **執行 debug**
@@ -464,23 +613,50 @@ GitHub Copilot 的整合與其他 AI Providers 有一些不同：
    npm run devscripts:ai
    ```
 
-#### 方案 2：使用本機 CLI（推薦）
-1. **設定 .env**（不需要 GitHubCopilotServerAddress）
+#### 方案 2/3：使用本機 CLI 或遠端 CLI Server（推薦用於本地開發）
+
+兩種模式都需要相同的初始設定：
+
+1. **安裝並驗證 GitHub Copilot CLI**
+   ```bash
+   # 安裝 CLI
+   npm install -g @github/copilot
+
+   # 登入 GitHub
+   copilot auth login
+
+   # 檢查是否已安裝
+   copilot --version
+   ```
+
+**方案 2：本機 CLI 模式**
+
+2. **設定 .env**（不需要 Token 或 Server Address）
    ```properties
    AiProvider=GitHubCopilot
    ModelName=gpt-4o
    ```
 
-2. **確認 GitHub Copilot CLI 已安裝並認證**
-   ```bash
-   # 檢查是否已安裝
-   copilot --version
-   
-   # 若未登入，執行認證
-   copilot auth login
+3. **執行 debug**
+   ```powershell
+   npm run devscripts:ai
    ```
 
-3. **執行 debug**
+**方案 3：遠端 CLI Server 模式**
+
+2. **設定 .env**
+   ```properties
+   AiProvider=GitHubCopilot
+   GitHubCopilotServerAddress=localhost:8080
+   ModelName=gpt-4o
+   ```
+
+3. **啟動測試 CLI Server**
+   ```bash
+   copilot --headless --port 8080
+   ```
+
+4. **執行 debug**
    ```powershell
    npm run devscripts:ai
    ```

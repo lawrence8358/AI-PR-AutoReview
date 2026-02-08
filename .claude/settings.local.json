@@ -7,7 +7,11 @@
       "Bash(npx ts-node:*)",
       "Bash(git add:*)",
       "WebFetch(domain:github.com)",
-      "Bash(openspec list:*)"
+      "Bash(openspec list:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions design:*)",
+      "Bash(openspec instructions tasks:*)",
+      "Bash(openspec instructions apply:*)"
     ]
   }
 }

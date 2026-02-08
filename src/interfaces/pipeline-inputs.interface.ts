@@ -8,7 +8,9 @@ export interface PipelineInputs {
     modelName: string;
     /** AI 模型 API 金鑰 */
     modelKey: string;
-    /** Server 位址 (選用，用於 GitHub Copilot) */
+    /** GitHub Token (選用，用於 GitHub Copilot Token 認證模式) */
+    githubToken?: string;
+    /** Server 位址 (選用，用於 GitHub Copilot 遠端 CLI Server 模式) */
     serverAddress?: string;
     /** 請求超時時間 (選用，用於 GitHub Copilot，單位：毫秒) */
     timeout?: number;

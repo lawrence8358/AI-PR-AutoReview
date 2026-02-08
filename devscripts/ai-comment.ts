@@ -11,7 +11,7 @@ async function run() {
     const prompt = `請先確認你會使用 C# 語言嗎?`;
 
     try {
-        let registerConfig: { apiKey: string; modelName: string; serverAddress?: string } | undefined;
+        let registerConfig: { apiKey: string; modelName: string; githubToken?: string; serverAddress?: string } | undefined;
         let canonicalName = 'Google';
 
         if (providerKey === 'openai') {
@@ -43,6 +43,7 @@ async function run() {
             registerConfig = {
                 apiKey: '', // GitHub Copilot 不需要 API Key
                 modelName: process.env.ModelName ?? 'gpt-4o',
+                githubToken: process.env.GitHubCopilotToken ?? '',
                 serverAddress: process.env.GitHubCopilotServerAddress ?? ''
             };
         } else {
@@ -52,6 +53,7 @@ async function run() {
         aiProvider.registerService(canonicalName, {
             apiKey: registerConfig.apiKey,
             modelName: registerConfig.modelName,
+            githubToken: registerConfig.githubToken,
             serverAddress: registerConfig.serverAddress
         });
 
