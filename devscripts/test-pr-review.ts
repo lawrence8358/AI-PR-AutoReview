@@ -15,6 +15,7 @@ import * as path from 'path';
 import { Main } from '../src/index';
 import { AIProviderService } from '../src/services/ai-provider.service';
 import { DevOpsProviderService } from '../src/services/devops-provider.service';
+import { AI_PROVIDERS, AI_PROVIDER_DISPLAY_NAMES } from '../src/constants';
 
 interface TestOptions {
     provider: 'azure' | 'github';
@@ -168,7 +169,7 @@ class PRReviewTester {
         }
 
         // GitHub Copilot 不需要 API key，但可以使用 Token 或 serverAddress（擇一）
-        if (options.aiProvider.toLowerCase() === 'githubcopilot') {
+        if (options.aiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
             // 從環境變數讀取 GitHub Token（如果命令列未提供）
             if (!options.githubToken) {
                 options.githubToken = process.env.GITHUB_COPILOT_TOKEN || process.env.GitHubCopilotToken || '';
@@ -204,15 +205,16 @@ class PRReviewTester {
      * 標準化提供者名稱
      */
     private static normalizeProvider(provider: string): string {
+        const providerLower = provider.toLowerCase();
         const map: Record<string, string> = {
-            'claude': 'Claude',
-            'openai': 'OpenAI',
-            'grok': 'Grok',
-            'google': 'Google',
-            'githubcopilot': 'GitHubCopilot',
-            'copilot': 'GitHubCopilot'
+            [AI_PROVIDERS.CLAUDE]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.CLAUDE],
+            [AI_PROVIDERS.OPENAI]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OPENAI],
+            [AI_PROVIDERS.GROK]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GROK],
+            [AI_PROVIDERS.GOOGLE]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GOOGLE],
+            [AI_PROVIDERS.GITHUB_COPILOT]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT],
+            'copilot': AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT]
         };
-        return map[provider.toLowerCase()] || provider;
+        return map[providerLower] || provider;
     }
 
     /**

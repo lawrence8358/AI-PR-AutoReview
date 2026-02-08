@@ -62,7 +62,7 @@
    前往 [GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
 
    建立新 Token 並設定：
-   - **權限**：帳戶權限 → Copilot → 存取權：**唯讀**
+   - **權限**：帳戶權限 → Copilot Requests → 存取權：**唯讀**
    - **Token 格式**：`github_pat_`（Fine-grained）或 `gho_`、`ghu_`（其他支援類型）
    - **不支援**：Classic token（`ghp_`）
 
@@ -124,7 +124,7 @@
 
 #### 安全性最佳實踐
 - 務必使用 **Secret Variables** 儲存 GitHub Token
-- 使用 **最小必要權限**（Copilot 唯讀）
+- 使用 **最小必要權限**Copilot Requests 唯讀）
 - 定期輪替 Token
 - 切勿將 Token 提交至原始碼控管
 
@@ -172,7 +172,7 @@
 | Grok (xAI) API Key | string | 條件式 | 無 | 輸入 Grok (xAI) 的 API Key，選擇 Grok 時必填。 |
 | Claude Model Name | string | 條件式 | claude-haiku-4-5 | 輸入 Claude 的模型名稱（例如 claude-haiku-4-5），選擇 Claude 時必填。 |
 | Claude API Key | string | 條件式 | 無 | 輸入 Claude (Anthropic) 的 API Key，選擇 Claude 時必填。 |
-| **GitHub Copilot Token** | string | 否 | 無 | **（選填）GitHub Fine-grained Personal Access Token**（格式：`github_pat_xxx`），用於向 GitHub Copilot 服務認證。從 GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens 取得。**必要權限**：帳戶權限 → Copilot → 存取權：唯讀。**注意**：不支援 Classic token（`ghp_`）。**不能與 CLI Server Address 同時使用**。選擇 GitHub Copilot 時顯示。 |
+| **GitHub Copilot Token** | string | 否 | 無 | **（選填）GitHub Fine-grained Personal Access Token**（格式：`github_pat_xxx`），用於向 GitHub Copilot 服務認證。從 GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens 取得。**必要權限**：帳戶權限 → Copilot Requests → 存取權：唯讀。**注意**：不支援 Classic token（`ghp_`）。**不能與 CLI Server Address 同時使用**。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot CLI Server Address | string | 否 | 無 | （選填）輸入 GitHub Copilot CLI Server 位址（IP 或 Domain + Port）。範例：192.168.1.100:8080 或 copilot.internal.company.com:8080。若未填寫且未提供 Token，則使用 Build Agent 內的 GitHub Copilot CLI。**不能與 GitHub Token 同時使用**。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot Model Name | string | 否 | gpt-4o | 輸入 GitHub Copilot 使用的模型名稱。選填，預設為 gpt-4o。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot Request Timeout (ms) | string | 否 | 120000 | GitHub Copilot 請求超時時間（毫秒）。預設：120000 ms（2分鐘）。若清空此欄位，則預設為 60000 ms（1分鐘）。選擇 GitHub Copilot 時顯示。 |

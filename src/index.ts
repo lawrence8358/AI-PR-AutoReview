@@ -6,6 +6,7 @@ import { PipelineInputs, DevOpsConnection } from './interfaces/pipeline-inputs.i
 import { AIProviderService } from './services/ai-provider.service';
 import { DevOpsProviderService } from './services/devops-provider.service';
 import { DevOpsService } from './interfaces/devops-service.interface';
+import { AI_PROVIDERS, DEFAULT_MODELS, API_KEY_ENV_MAP, TASK_INPUT_CONFIG_MAP } from './constants';
 
 
 const DEFAULT_SYSTEM_INSTRUCTION = `You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.
@@ -116,66 +117,35 @@ export class Main {
         const providerLower = provider.toLowerCase();
 
         if (this.isDebugMode) {
-            const modelName = process.env.ModelName ?? this.getDefaultModelName(providerLower);
-            const modelKey = this.getModelKeyFromEnv(providerLower);
-            const githubToken = providerLower === 'githubcopilot' ? process.env.GitHubCopilotToken : undefined;
-            const serverAddress = providerLower === 'githubcopilot' ? process.env.GitHubCopilotServerAddress : undefined;
+            // Debug 模式：從環境變數讀取
+            const modelName = process.env.ModelName ?? DEFAULT_MODELS[providerLower] ?? 'gemini-2.5-flash';
+            const envKey = API_KEY_ENV_MAP[providerLower];
+            const modelKey = envKey ? (process.env[envKey] ?? '') : '';
+            const githubToken = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotToken : undefined;
+            const serverAddress = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotServerAddress : undefined;
             return { modelName, modelKey, githubToken, serverAddress };
         } else {
-            return this.getModelConfigFromTaskInput(providerLower);
+            // Pipeline 模式：從 Task Input 讀取
+            const config = TASK_INPUT_CONFIG_MAP[providerLower];
+            if (!config) {
+                throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
+            }
+
+            const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } = {
+                modelName: tl.getInput(config.nameKey, false) ?? config.defaultName,
+                modelKey: config.apiKeyKey ? (tl.getInput(config.apiKeyKey, true) ?? '') : ''
+            };
+
+            // GitHub Copilot 需要讀取 githubToken 和 serverAddress
+            if (config.githubTokenKey) {
+                result.githubToken = tl.getInput(config.githubTokenKey, false) ?? '';
+            }
+            if (config.serverAddressKey) {
+                result.serverAddress = tl.getInput(config.serverAddressKey, false) ?? '';
+            }
+
+            return result;
         }
-    }
-
-    private getDefaultModelName(provider: string): string {
-        const defaults: Record<string, string> = {
-            'openai': 'gpt-4.1-nano',
-            'grok': 'grok-3-mini',
-            'claude': 'claude-haiku-4-5',
-            'google': 'gemini-2.5-flash',
-            'githubcopilot': 'gpt-5-mini'
-        };
-        return defaults[provider] ?? 'gemini-2.5-flash';
-    }
-
-    private getModelKeyFromEnv(provider: string): string {
-        const keyMap: Record<string, string> = {
-            'openai': 'OpenAIAPIKey',
-            'grok': 'GrokAPIKey',
-            'claude': 'ClaudeAPIKey',
-            'google': 'GeminiAPIKey',
-            'githubcopilot': '' // GitHub Copilot 不需要 API Key
-        };
-        return process.env[keyMap[provider]] ?? '';
-    }
-
-    private getModelConfigFromTaskInput(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } {
-        const configMap: Record<string, { nameKey: string; apiKeyKey: string; defaultName: string; githubTokenKey?: string; serverAddressKey?: string }> = {
-            'openai': { nameKey: 'inputOpenAIModelName', apiKeyKey: 'inputOpenAIApiKey', defaultName: 'gpt-4.1-nano' },
-            'grok': { nameKey: 'inputGrokModelName', apiKeyKey: 'inputGrokApiKey', defaultName: 'grok-3-mini' },
-            'claude': { nameKey: 'inputClaudeModelName', apiKeyKey: 'inputClaudeApiKey', defaultName: 'claude-haiku-4-5' },
-            'google': { nameKey: 'inputModelName', apiKeyKey: 'inputModelKey', defaultName: 'gemini-2.5-flash' },
-            'githubcopilot': { nameKey: 'inputGitHubCopilotModelName', apiKeyKey: '', defaultName: 'gpt-4o', githubTokenKey: 'inputGitHubCopilotToken', serverAddressKey: 'inputGitHubCopilotServerAddress' }
-        };
-
-        const config = configMap[provider];
-        if (!config) {
-            throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
-        }
-
-        const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } = {
-            modelName: tl.getInput(config.nameKey, false) ?? config.defaultName,
-            modelKey: config.apiKeyKey ? (tl.getInput(config.apiKeyKey, true) ?? '') : ''
-        };
-
-        // GitHub Copilot 需要讀取 githubToken 和 serverAddress
-        if (config.githubTokenKey) {
-            result.githubToken = tl.getInput(config.githubTokenKey, false) ?? '';
-        }
-        if (config.serverAddressKey) {
-            result.serverAddress = tl.getInput(config.serverAddressKey, false) ?? '';
-        }
-
-        return result;
     }
 
     /**
@@ -190,7 +160,7 @@ export class Main {
         const { modelName, modelKey, githubToken, serverAddress } = this.getAIProviderConfig(inputAiProvider);
 
         // GitHub Copilot 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
-        if (inputAiProvider.toLowerCase() === 'githubcopilot') {
+        if (inputAiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
             if (githubToken && githubToken.trim() !== '' && serverAddress && serverAddress.trim() !== '') {
                 throw new Error('⛔ GitHub Token 和 CLI Server Address 不能同時使用，請選擇其中一種認證方式');
             }
@@ -214,7 +184,7 @@ export class Main {
         
         // 取得 GitHub Copilot Timeout (僅當 AI Provider 為 GitHubCopilot 時)
         let timeout: number | undefined = undefined;
-        if (inputAiProvider.toLowerCase() === 'githubcopilot') {
+        if (inputAiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
             const timeoutStr = this.getInputValue('GitHubCopilotTimeout', 'inputGitHubCopilotTimeout', false, '120000');
             if (timeoutStr && timeoutStr.trim() !== '') {
                 const parsedTimeout = parseInt(timeoutStr);

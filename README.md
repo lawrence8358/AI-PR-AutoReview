@@ -63,7 +63,7 @@ The extension automatically detects which mode to use based on the parameters yo
    Go to [GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
 
    Create a new token with:
-   - **Permissions**: Account permissions → Copilot → Access: **Read-only**
+   - **Permissions**: Account permissions → Copilot Requests → Access: **Read-only**
    - **Token format**: `github_pat_` (Fine-grained) or `gho_`, `ghu_` (other supported types)
    - **Not supported**: Classic tokens (`ghp_`)
 
@@ -125,7 +125,7 @@ Both Remote CLI Server and Local CLI modes require the same initial setup:
 
 #### Security Best Practices
 - Always use **Secret Variables** to store GitHub Tokens
-- Use **minimum required permissions** (Copilot Read-only)
+- Use **minimum required permissions** (Copilot Requests Read-only)
 - Rotate tokens periodically
 - Never commit tokens to source control
 
@@ -173,7 +173,7 @@ Below are all input parameters supported by this Task:
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
 | Claude Model Name | string | Conditional | claude-haiku-4-5 | Enter the Claude model name (e.g., claude-haiku-4-5). Required when AI Provider is Claude. |
 | Claude API Key | string | Conditional | (empty) | Enter your Claude API Key. Required when AI Provider is Claude. |
-| **GitHub Copilot Token** | string | No | (empty) | **(Optional) GitHub Fine-grained Personal Access Token** (format: `github_pat_xxx`) for authenticating with GitHub Copilot service. Get from GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens. **Required permissions**: Account permissions → Copilot → Access: Read-only. **Note**: Classic tokens (`ghp_`) are not supported. **Cannot be used together with CLI Server Address**. Visible when GitHub Copilot is selected. |
+| **GitHub Copilot Token** | string | No | (empty) | **(Optional) GitHub Fine-grained Personal Access Token** (format: `github_pat_xxx`) for authenticating with GitHub Copilot service. Get from GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens. **Required permissions**: Account permissions → Copilot Requests → Access: Read-only. **Note**: Classic tokens (`ghp_`) are not supported. **Cannot be used together with CLI Server Address**. Visible when GitHub Copilot is selected. |
 | GitHub Copilot CLI Server Address | string | No | (empty) | (Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080 or copilot.internal.company.com:8080. If not provided and no Token is provided, will use GitHub Copilot CLI in Build Agent. **Cannot be used together with GitHub Token**. Visible when GitHub Copilot is selected. |
 | GitHub Copilot Model Name | string | No | gpt-4o | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-4o. Visible when GitHub Copilot is selected. |
 | GitHub Copilot Request Timeout (ms) | string | No | 120000 | Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute). Visible when GitHub Copilot is selected. |

@@ -1,4 +1,5 @@
 import { BaseOpenAICompatibleService } from './base-openai-compatible.service';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 
 /**
  * Grok (xAI) 服務實作
@@ -11,7 +12,7 @@ export class GrokService extends BaseOpenAICompatibleService {
      * @param model - 模型名稱，預設為 'grok-3-mini'
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
-    constructor(apiKey: string, model: string = 'grok-3-mini') {
+    constructor(apiKey: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.GROK]) {
         super(apiKey, model, 'https://api.x.ai/v1');
     }
 

@@ -1,4 +1,5 @@
 import { AIProviderService } from '../src/services/ai-provider.service';
+import { AI_PROVIDERS, DEFAULT_MODELS, API_KEY_ENV_MAP, AI_PROVIDER_DISPLAY_NAMES } from '../src/constants';
 
 async function run() {
     // 根據環境變數的 AiProvider 選擇要測試的 AI 平台
@@ -14,35 +15,39 @@ async function run() {
         let registerConfig: { apiKey: string; modelName: string; githubToken?: string; serverAddress?: string } | undefined;
         let canonicalName = 'Google';
 
-        if (providerKey === 'openai') {
-            canonicalName = 'OpenAI';
+        if (providerKey === AI_PROVIDERS.OPENAI) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OPENAI];
+            const envKey = API_KEY_ENV_MAP[AI_PROVIDERS.OPENAI];
             registerConfig = {
-                apiKey: process.env.OpenAIAPIKey ?? '',
-                modelName: process.env.ModelName ?? 'gpt-4.1-nano'
+                apiKey: process.env[envKey] ?? '',
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.OPENAI]
             };
-        } else if (providerKey === 'grok') {
-            canonicalName = 'Grok';
+        } else if (providerKey === AI_PROVIDERS.GROK) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GROK];
+            const envKey = API_KEY_ENV_MAP[AI_PROVIDERS.GROK];
             registerConfig = {
-                apiKey: process.env.GrokAPIKey ?? '',
-                modelName: process.env.ModelName ?? 'grok-3-mini'
+                apiKey: process.env[envKey] ?? '',
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.GROK]
             };
-        } else if (providerKey === 'claude') {
-            canonicalName = 'Claude';
+        } else if (providerKey === AI_PROVIDERS.CLAUDE) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.CLAUDE];
+            const envKey = API_KEY_ENV_MAP[AI_PROVIDERS.CLAUDE];
             registerConfig = {
-                apiKey: process.env.ClaudeAPIKey ?? '',
-                modelName: process.env.ModelName ?? 'claude-haiku-4-5'
+                apiKey: process.env[envKey] ?? '',
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.CLAUDE]
             };
-        } else if (providerKey === 'google') {
-            canonicalName = 'Google';
+        } else if (providerKey === AI_PROVIDERS.GOOGLE) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GOOGLE];
+            const envKey = API_KEY_ENV_MAP[AI_PROVIDERS.GOOGLE];
             registerConfig = {
-                apiKey: process.env.GeminiAPIKey ?? '',
-                modelName: process.env.ModelName ?? 'gemini-2.5-flash'
+                apiKey: process.env[envKey] ?? '',
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.GOOGLE]
             };
-        } else if (providerKey === 'githubcopilot') {
-            canonicalName = 'GitHubCopilot';
+        } else if (providerKey === AI_PROVIDERS.GITHUB_COPILOT) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT];
             registerConfig = {
                 apiKey: '', // GitHub Copilot 不需要 API Key
-                modelName: process.env.ModelName ?? 'gpt-4o',
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.GITHUB_COPILOT],
                 githubToken: process.env.GitHubCopilotToken ?? '',
                 serverAddress: process.env.GitHubCopilotServerAddress ?? ''
             };

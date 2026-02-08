@@ -1,4 +1,5 @@
 import { BaseOpenAICompatibleService } from './base-openai-compatible.service';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 
 /**
  * OpenAI 服務實作
@@ -11,7 +12,7 @@ export class OpenAIService extends BaseOpenAICompatibleService {
      * @param model - 模型名稱，預設為 'gpt-4o'
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
-    constructor(apiKey: string, model: string = 'gpt-4o') {
+    constructor(apiKey: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.OPENAI]) {
         super(apiKey, model);
     }
 

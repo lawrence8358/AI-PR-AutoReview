@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { GenerateConfig } from '../interfaces/ai-service.interface';
 import { BaseHttpAIService } from './base-http-ai.service';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 
 /**
  * Claude AI 服務實作
@@ -15,7 +16,7 @@ export class ClaudeService extends BaseHttpAIService {
      * @param model - 模型名稱，預設為 'claude-haiku-4-5'
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
-    constructor(apiKey: string, model: string = 'claude-haiku-4-5') {
+    constructor(apiKey: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.CLAUDE]) {
         super(apiKey, model);
     }
 

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { GenerateConfig } from '../interfaces/ai-service.interface';
 import { BaseHttpAIService } from './base-http-ai.service';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 
 /**
  * Google AI 服務實作
@@ -13,7 +14,7 @@ export class GoogleAIService extends BaseHttpAIService {
      * @param model - 模型名稱，預設為 'gemini-2.5-flash'
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
-    constructor(apiKey: string, model: string = 'gemini-2.5-flash') {
+    constructor(apiKey: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.GOOGLE]) {
         super(apiKey, model);
     }
 

@@ -1,4 +1,5 @@
 import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 
 /**
  * GitHub Copilot AI 服務實作
@@ -25,7 +26,7 @@ export class GithubCopilotService implements AIService {
      * @param timeout - 請求超時時間（毫秒）。若未提供，預設為 60000 ms (1分鐘)
      * @throws {Error} 當參數格式錯誤或參數互斥時拋出錯誤
      */
-    constructor(githubToken?: string, serverAddress?: string, model: string = 'gpt-4o', timeout?: number) {
+    constructor(githubToken?: string, serverAddress?: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.GITHUB_COPILOT], timeout?: number) {
         // 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
         if (githubToken && githubToken.trim() !== '' && serverAddress && serverAddress.trim() !== '') {
             throw new Error('⛔ GitHub Token and CLI Server Address cannot be provided at the same time. Please choose one authentication method.');

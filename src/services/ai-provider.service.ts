@@ -4,6 +4,7 @@ import { OpenAIService } from './openai.service';
 import { GrokService } from './grok.service';
 import { ClaudeService } from './claude.service';
 import { GithubCopilotService } from './github-copilot.service';
+import { AI_PROVIDERS } from '../constants';
 
 /**
  * AI 服務提供者類別
@@ -31,7 +32,7 @@ export class AIProviderService {
         const providerLower = provider.toLowerCase();
 
         // GitHub Copilot 不需要 apiKey，serverAddress 也是可選的（未提供時使用本機 CLI）
-        if (providerLower !== 'githubcopilot') {
+        if (providerLower !== AI_PROVIDERS.GITHUB_COPILOT) {
             if (!config.apiKey || config.apiKey.trim() === '') {
                 throw new Error('⛔ API key is required');
             }
@@ -66,19 +67,19 @@ export class AIProviderService {
         // 建立新實例
         let service: AIService;
         switch (normalizedProvider) {
-            case 'google':
+            case AI_PROVIDERS.GOOGLE:
                 service = new GoogleAIService(config.apiKey, config.modelName);
                 break;
-            case 'openai':
+            case AI_PROVIDERS.OPENAI:
                 service = new OpenAIService(config.apiKey, config.modelName);
                 break;
-            case 'grok':
+            case AI_PROVIDERS.GROK:
                 service = new GrokService(config.apiKey, config.modelName);
                 break;
-            case 'claude':
+            case AI_PROVIDERS.CLAUDE:
                 service = new ClaudeService(config.apiKey, config.modelName);
                 break;
-            case 'githubcopilot':
+            case AI_PROVIDERS.GITHUB_COPILOT:
                 // githubToken, serverAddress 和 timeout 是可選的
                 // 未提供時使用本機 CLI 和預設超時
                 service = new GithubCopilotService(config.githubToken, config.serverAddress, config.modelName, config.timeout);

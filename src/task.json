@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 3,
-        "Patch": 12
+        "Patch": 13
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -29,7 +29,7 @@
                 "OpenAI": "OpenAI",
                 "Grok": "Grok (xAI)",
                 "Claude": "Claude (Anthropic)",
-                "GitHubCopilot": "GitHub Copilot (Preview)"
+                "GitHubCopilot": "GitHub Copilot"
             }
         },
         {
