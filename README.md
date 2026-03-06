@@ -1,4 +1,4 @@
-# [English](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.md) | [繁體中文](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.zh-TW.md)
+[English](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.md) | [繁體中文](https://github.com/lawrence8358/AI-PR-AutoReview/blob/main/README.zh-TW.md)
 
 # AI Code Review for Azure DevOps
 
@@ -132,6 +132,60 @@ Both Remote CLI Server and Local CLI modes require the same initial setup:
 ---
 
 Before using this Task, you also need to complete the following configuration steps:
+
+### ⚠️ (GitHub Repositories Only) Configure GitHub Access Token
+
+> **This step only applies when your Azure DevOps Pipeline sources code from a GitHub repository.**
+> If you are using Azure DevOps Git repositories, skip to Step 1.
+
+When a pipeline's source code is hosted on **GitHub**, the Azure DevOps built-in identity (`SystemVssConnection`) cannot be used to call the GitHub API. This extension reads PR diffs and posts review comments via the **GitHub REST API**, which requires a manually configured GitHub Personal Access Token (PAT).
+
+**Why this error occurs**: Without this configuration, the extension cannot obtain an access token and will fail with:
+> `Task failed with error: ⛔ Unable to get DevOps access token`
+
+#### Step-by-Step Setup
+
+1. **Create a GitHub Personal Access Token**
+
+   **Option A — Classic Token (recommended for simplicity)**
+
+   Go to [GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
+
+   Generate a new token and select the appropriate scope based on your repository type:
+
+   ![Classic Token Permission Settings](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI7.png)
+
+   - **Public repositories**: Check `public_repo` — Access public repositories (grants read/write access to public repos, including PR comments)
+   - **Private repositories**: Check `repo` — Full control of private repositories (the entire `repo` scope must be selected; selecting only sub-scopes like `public_repo` or `repo:status` is **not sufficient** for private repos)
+
+   > **Important**: For private GitHub repositories, you **must** select the top-level `repo` scope. Selecting only sub-items (e.g., `repo:status`, `public_repo`) will not grant the required write access to post PR comments.
+
+   **Option B — Fine-grained Token**
+
+   Go to [GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
+
+   Create a token scoped to the **target repository** with:
+   - **Repository permissions → Pull requests**: Read and write (allows the extension to post comments)
+   - **Repository permissions → Contents**: Read-only (allows the extension to read file content)
+
+2. **Add the Token as a Secret Pipeline Variable**
+
+   In your Azure DevOps Pipeline:
+   - Click **Edit** on your pipeline
+   - Click **Variables** (top-right corner)
+   - Click **+ Add** and configure:
+     - **Name**: `AccessToken`
+     - **Value**: Your GitHub PAT
+     - ✅ Enable **Keep this value secret** to prevent the token from appearing in build logs
+   - Click **Save**
+
+   ![Pipeline Variables Configuration](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI6.png)
+
+3. **Notes**
+   - The `AccessToken` variable name is **case-sensitive** and must be exactly `AccessToken`.
+   - Once this token is configured, the extension will use it to read PR diffs from GitHub and post review comments — **no additional Azure DevOps permission setup (Steps 1–3 below) is needed** for GitHub repositories.
+
+---
 
 ### Step 1: Configure CI service permissions
 To allow the Pipeline service to write AI comments back to the PR, you must grant it the required permissions. If this permission is not set, the Pipeline will fail and display the error `Error: TF401027: You need the Git 'PullRequestContribute' permission...`.

@@ -1,4 +1,4 @@
-# [English](./README.md) | [繁體中文](./README.zh-TW.md)
+[English](./README.md) | [繁體中文](./README.zh-TW.md)
 # AI Code Review for Azure DevOps
 
 這是一個 Azure DevOps Pipeline 擴充套件，利用大型語言模型 (LLM) 的能力，自動針對 Pull Request (PR) 的程式碼變更（Diff）進行智慧化 Code Review，並將審查建議直接留言在 PR 中。
@@ -131,6 +131,60 @@
 ---
 
 在使用此 Task 之前，您還需要完成以下設定：
+
+### ⚠️（僅 GitHub 儲存庫）設定 GitHub 存取 Token
+
+> **此步驟僅適用於 Azure DevOps Pipeline 的原始碼來自 GitHub 儲存庫的情況。**
+> 若您使用的是 Azure DevOps Git 儲存庫，請直接跳至 Step 1。
+
+當 Pipeline 的原始碼託管於 **GitHub** 時，Azure DevOps 的內建身份識別（`SystemVssConnection`）無法用來呼叫 GitHub API。本擴充套件透過 **GitHub REST API** 讀取 PR Diff 並發佈審查評論，因此需要手動設定 GitHub 個人存取權杖（PAT）。
+
+**錯誤原因**：未設定此項時，擴充套件無法取得存取憑證，並會出現以下錯誤：
+> `Task failed with error: ⛔ Unable to get DevOps access token`
+
+#### 設定步驟
+
+1. **建立 GitHub 個人存取權杖（PAT）**
+
+   **方案 A — Classic Token（建議，設定較簡單）**
+
+   前往 [GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
+
+   建立新 Token，並依據儲存庫類型勾選對應範圍：
+
+   ![Classic Token 權限設定](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI7.png)
+
+   - **公開儲存庫**：勾選 `public_repo` — Access public repositories（提供公開儲存庫的讀寫存取，包含 PR 評論）
+   - **私有儲存庫**：勾選 `repo` — Full control of private repositories（需勾選最上層的 `repo`；**僅勾選子項目**如 `public_repo` 或 `repo:status` 對私有儲存庫**不足以**寫入 PR 評論）
+
+   > **重要提示**：若目標為**私有 GitHub 儲存庫**，必須勾選最上層的 `repo` 完整範圍。僅勾選子項目（如 `repo:status`、`public_repo`）不會授予寫入 PR 評論所需的權限。
+
+   **方案 B — Fine-grained Token**
+
+   前往 [GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/tokens?type=beta)
+
+   建立 Token 並設定範圍至目標**儲存庫**，需要以下權限：
+   - **Repository permissions → Pull requests**：Read and write（允許套件發佈評論）
+   - **Repository permissions → Contents**：Read-only（允許套件讀取檔案內容）
+
+2. **將 Token 新增為 Pipeline 密碼變數**
+
+   在您的 Azure DevOps Pipeline 中：
+   - 點選 **Edit** 編輯您的 Pipeline
+   - 點選右上角的 **Variables**
+   - 點選 **+ Add** 並設定：
+     - **Name**：`AccessToken`
+     - **Value**：您的 GitHub PAT
+     - ✅ 勾選 **Keep this value secret**，防止 Token 出現在建置日誌中
+   - 點選 **Save** 儲存
+
+   ![Pipeline 變數設定](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI6.png)
+
+3. **注意事項**
+   - 變數名稱 `AccessToken` **區分大小寫**，請確保大小寫完全一致。
+   - 完成以上設定後，擴充套件便會使用此 Token 對 GitHub 讀取 PR Diff 並發佈審查評論。**GitHub 儲存庫不需要**再進行下方 Step 1 至 Step 3 的 Azure DevOps 服務權限設定。
+
+---
 
 ### Step 1: 設定 CI 服務權限
 為了讓 Pipeline 服務能將 AI 的評論寫回 PR，您必須授予它權限，若未設定此權限，Pipeline 將會失敗並顯示 `Error: TF401027: You need the Git 'PullRequestContribute' permission... `錯誤。
