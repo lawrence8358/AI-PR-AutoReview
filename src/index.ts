@@ -113,7 +113,7 @@ export class Main {
      * @param provider - AI Provider 名稱
      * @returns { modelName, modelKey, serverAddress }
      */
-    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } {
+    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string; copilotCliPath?: string } {
         const providerLower = provider.toLowerCase();
 
         if (this.isDebugMode) {
@@ -123,7 +123,8 @@ export class Main {
             const modelKey = envKey ? (process.env[envKey] ?? '') : '';
             const githubToken = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotToken : undefined;
             const serverAddress = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotServerAddress : undefined;
-            return { modelName, modelKey, githubToken, serverAddress };
+            const copilotCliPath = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotCliPath : undefined;
+            return { modelName, modelKey, githubToken, serverAddress, copilotCliPath };
         } else {
             // Pipeline 模式：從 Task Input 讀取
             const config = TASK_INPUT_CONFIG_MAP[providerLower];
@@ -131,17 +132,20 @@ export class Main {
                 throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
             }
 
-            const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string } = {
+            const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string; copilotCliPath?: string } = {
                 modelName: tl.getInput(config.nameKey, false) ?? config.defaultName,
                 modelKey: config.apiKeyKey ? (tl.getInput(config.apiKeyKey, true) ?? '') : ''
             };
 
-            // GitHub Copilot 需要讀取 githubToken 和 serverAddress
+            // GitHub Copilot 需要讀取 githubToken、serverAddress 和 copilotCliPath
             if (config.githubTokenKey) {
                 result.githubToken = tl.getInput(config.githubTokenKey, false) ?? '';
             }
             if (config.serverAddressKey) {
                 result.serverAddress = tl.getInput(config.serverAddressKey, false) ?? '';
+            }
+            if (config.copilotCliPathKey) {
+                result.copilotCliPath = tl.getInput(config.copilotCliPathKey, false) ?? '';
             }
 
             return result;
@@ -157,7 +161,7 @@ export class Main {
         const inputAiProvider = this.getInputValue('AiProvider', 'inputAiProvider', true, 'Google');
 
         // 取得 AI Provider 設定
-        const { modelName, modelKey, githubToken, serverAddress } = this.getAIProviderConfig(inputAiProvider);
+        const { modelName, modelKey, githubToken, serverAddress, copilotCliPath } = this.getAIProviderConfig(inputAiProvider);
 
         // GitHub Copilot 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
         if (inputAiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
@@ -207,6 +211,7 @@ export class Main {
             modelKey,
             githubToken,
             serverAddress,
+            copilotCliPath,
             timeout,
             systemInstruction,
             promptTemplate,
@@ -446,7 +451,8 @@ async function run() {
             modelName: inputs.modelName,
             githubToken: inputs.githubToken,
             serverAddress: inputs.serverAddress,
-            timeout: inputs.timeout
+            timeout: inputs.timeout,
+            copilotCliPath: inputs.copilotCliPath
         };
         aiProvider.registerService(inputs.aiProvider, config);
         

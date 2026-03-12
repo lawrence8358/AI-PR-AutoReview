@@ -13,7 +13,7 @@
     "version": {
         "Major": 1,
         "Minor": 3,
-        "Patch": 14
+        "Patch": 24
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -56,7 +56,7 @@
             "label": "OpenAI Model Name",
             "defaultValue": "gpt-4.1-nano",
             "required": true,
-            "helpMarkDown": "Enter the OpenAI model name (e.g. gpt-5, gpt-5-mini, gpt-5-nano, gpt-4o, gpt-4o-mini).",
+            "helpMarkDown": "Enter the OpenAI model name (e.g. gpt-5, gpt-5-mini, gpt-5-nano, gpt-5-mini, gpt-5-mini-mini).",
             "visibleRule": "inputAiProvider == OpenAI"
         },
         {
@@ -114,6 +114,15 @@
             "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
+            "name": "inputGitHubCopilotModelName",
+            "type": "string",
+            "label": "GitHub Copilot Model Name",
+            "defaultValue": "gpt-5-mini",
+            "required": true,
+            "helpMarkDown": "Optional. Defaults to gpt-5-mini.",
+            "visibleRule": "inputAiProvider == GitHubCopilot"
+        },
+        {
             "name": "inputGitHubCopilotServerAddress",
             "type": "string",
             "label": "GitHub Copilot CLI Server Address",
@@ -123,12 +132,12 @@
             "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
-            "name": "inputGitHubCopilotModelName",
+            "name": "inputGitHubCopilotCliPath",
             "type": "string",
-            "label": "GitHub Copilot Model Name",
-            "defaultValue": "gpt-4o",
-            "required": true,
-            "helpMarkDown": "Optional. Defaults to gpt-4o.",
+            "label": "GitHub Copilot CLI Path",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "(Optional) Absolute path to Copilot CLI executable on the build agent. Example (Windows): C:\\Tools\\copilot\\copilot.exe. If empty, task will fallback to environment variable COPILOT_CLI_PATH, then system PATH.",
             "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {

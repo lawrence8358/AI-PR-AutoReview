@@ -2,11 +2,11 @@ import { AI_PROVIDERS } from './providers.constants';
 
 // 預設模型名稱配置（統一所有不一致的地方）
 export const DEFAULT_MODELS: Record<string, string> = {
-  [AI_PROVIDERS.OPENAI]: 'gpt-4o',              // 統一使用 gpt-4o
+  [AI_PROVIDERS.OPENAI]: 'gpt-5-mini',              // 統一使用 gpt-5-mini
   [AI_PROVIDERS.GROK]: 'grok-3-mini',
   [AI_PROVIDERS.CLAUDE]: 'claude-haiku-4-5',
   [AI_PROVIDERS.GOOGLE]: 'gemini-2.5-flash',
-  [AI_PROVIDERS.GITHUB_COPILOT]: 'gpt-4o'       // 統一使用 gpt-4o
+  [AI_PROVIDERS.GITHUB_COPILOT]: 'gpt-5-mini'       // 統一使用 gpt-5-mini
 };
 
 // Environment variable key 映射（原 index.ts line 141-147）
@@ -25,6 +25,7 @@ export interface TaskInputConfig {
   defaultName: string;
   githubTokenKey?: string;
   serverAddressKey?: string;
+  copilotCliPathKey?: string;
 }
 
 export const TASK_INPUT_CONFIG_MAP: Record<string, TaskInputConfig> = {
@@ -53,6 +54,7 @@ export const TASK_INPUT_CONFIG_MAP: Record<string, TaskInputConfig> = {
     apiKeyKey: '',
     defaultName: DEFAULT_MODELS[AI_PROVIDERS.GITHUB_COPILOT],
     githubTokenKey: 'inputGitHubCopilotToken',
-    serverAddressKey: 'inputGitHubCopilotServerAddress'
+    serverAddressKey: 'inputGitHubCopilotServerAddress',
+    copilotCliPathKey: 'inputGitHubCopilotCliPath'
   }
 };

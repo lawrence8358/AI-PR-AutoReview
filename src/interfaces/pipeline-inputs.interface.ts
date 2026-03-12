@@ -14,6 +14,8 @@ export interface PipelineInputs {
     serverAddress?: string;
     /** 請求超時時間 (選用，用於 GitHub Copilot，單位：毫秒) */
     timeout?: number;
+    /** Copilot CLI 路徑 (選用，明確指定 CLI 可執行檔位置) */
+    copilotCliPath?: string;
     /** 系統指令 */
     systemInstruction: string;
     /** 提示詞範本 */
