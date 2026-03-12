@@ -262,7 +262,7 @@ GitHub 參數:
 
 AI 提供者參數:
   --ai <PROVIDER>          'claude', 'openai', 'grok', 'google', 'githubcopilot'
-  --model <NAME>           Model name (如: claude-haiku-4-5, gpt-4o)
+  --model <NAME>           Model name (如: claude-haiku-4-5, gpt-5-mini)
   --key <KEY>              API key (或使用環境變數)
   --github-token <TOKEN>   GitHub Token (用於 GitHub Copilot Token 認證模式)
   --server-address <ADDR>  GitHub Copilot CLI Server 位址 (格式: host:port)

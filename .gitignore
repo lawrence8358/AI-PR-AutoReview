@@ -3,3 +3,7 @@ dist-dev
 packages
 node_modules
 *.vsix
+
+.github
+.peaigen
+.claude

@@ -6,7 +6,7 @@ This is an Azure DevOps Pipeline extension that leverages the power of Large Lan
 
 **Now supporting all major AI providers:**
 + **GitHub Copilot** (All versions supported)
-+ **OpenAI** (GPT-4o, etc.)
++ **OpenAI** (gpt-5-mini, etc.)
 + **Google Gemini**
 + **Anthropic Claude**
 + **xAI Grok**
@@ -50,7 +50,7 @@ The extension automatically detects which mode to use based on the parameters yo
 
 | Mode | Use Case | Parameters | Prerequisites |
 |------|----------|------------|---------------|
-| **Token Mode** | Cloud CI (Azure Pipelines Hosted Agents) | Provide **GitHub Token** only | • GitHub Copilot subscription<br>• Fine-grained Personal Access Token with Copilot Read permission<br>• **CI Token Mode**: Run `npm install -g @github/copilot` in CI before this task ([Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)) |
+| **Token Mode** | Cloud CI (Azure Pipelines Hosted Agents) | Provide **GitHub Token** only | • GitHub Copilot subscription<br>• Fine-grained Personal Access Token with Copilot Read permission<br>• **CI Token Mode**: Run `npm install -g @github/copilot@10.9.4` in CI before this task ([Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)) |
 | **Remote CLI Server** | Centralized architecture | Provide **CLI Server Address** only | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed (`npm install -g @github/copilot`)<br>• Completed authentication (`copilot auth login`)<br>• Network connectivity between Agent and Server |
 | **Local CLI** | On-premise CI with pre-configured agents | Don't provide Token or Server Address | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed on Build Agent (`npm install -g @github/copilot`)<br>• Completed authentication via `copilot auth login` |
 
@@ -84,7 +84,7 @@ The extension automatically detects which mode to use based on the parameters yo
    - **AI Provider**: Select `GitHub Copilot`
    - **GitHub Copilot Token**: Enter your Fine-grained Personal Access Token (or use secret variable)
    - **CLI Server Address**: Leave empty
-   - **Model Name**: (Optional) Defaults to `gpt-4o`
+   - **Model Name**: (Optional) Defaults to `gpt-5-mini`
 
 #### Remote CLI Server & Local CLI Mode Setup
 
@@ -113,7 +113,7 @@ Both Remote CLI Server and Local CLI modes require the same initial setup:
    - **AI Provider**: Select `GitHub Copilot`
    - **GitHub Copilot Token**: Leave empty
    - **CLI Server Address**: Enter `your-server-ip:8080` or `your-domain:8080`
-   - **Model Name**: (Optional) Defaults to `gpt-4o`
+   - **Model Name**: (Optional) Defaults to `gpt-5-mini`
 
 **For Local CLI Mode:**
 
@@ -121,7 +121,7 @@ Both Remote CLI Server and Local CLI modes require the same initial setup:
    - **AI Provider**: Select `GitHub Copilot`
    - **GitHub Copilot Token**: Leave empty
    - **CLI Server Address**: Leave empty
-   - **Model Name**: (Optional) Defaults to `gpt-4o`
+   - **Model Name**: (Optional) Defaults to `gpt-5-mini`
 
 #### Security Best Practices
 - Always use **Secret Variables** to store GitHub Tokens
@@ -179,7 +179,7 @@ When a pipeline's source code is hosted on **GitHub**, the Azure DevOps built-in
      - ✅ Enable **Keep this value secret** to prevent the token from appearing in build logs
    - Click **Save**
 
-   ![Pipeline Variables Configuration](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI6.png)
+   ![Pipeline Variables Configuration](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/CI6.png)
 
 3. **Notes**
    - The `AccessToken` variable name is **case-sensitive** and must be exactly `AccessToken`.
@@ -221,7 +221,7 @@ Below are all input parameters supported by this Task:
 | AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot. |
 | AI Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
 | Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
-| OpenAI Model Name | string | Conditional | gpt-4o | Enter the OpenAI model name (e.g., gpt-4o, gpt-4o-mini). Required when AI Provider is OpenAI. |
+| OpenAI Model Name | string | Conditional | gpt-5-mini | Enter the OpenAI model name (e.g., gpt-5-mini, gpt-5-mini-mini). Required when AI Provider is OpenAI. |
 | OpenAI API Key | string | Conditional | (empty) | Enter your OpenAI API Key. Required when AI Provider is OpenAI. |
 | Grok Model Name | string | Conditional | grok-3-mini | Enter the Grok model name (e.g., grok-3-mini). Required when AI Provider is Grok. |
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
@@ -229,7 +229,7 @@ Below are all input parameters supported by this Task:
 | Claude API Key | string | Conditional | (empty) | Enter your Claude API Key. Required when AI Provider is Claude. |
 | **GitHub Copilot Token** | string | No | (empty) | **(Optional) GitHub Fine-grained Personal Access Token** (format: `github_pat_xxx`) for authenticating with GitHub Copilot service. Get from GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens. **Required permissions**: Account permissions → Copilot Requests → Access: Read-only. **Note**: Classic tokens (`ghp_`) are not supported. **Cannot be used together with CLI Server Address**. Visible when GitHub Copilot is selected. |
 | GitHub Copilot CLI Server Address | string | No | (empty) | (Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080 or copilot.internal.company.com:8080. If not provided and no Token is provided, will use GitHub Copilot CLI in Build Agent. **Cannot be used together with GitHub Token**. Visible when GitHub Copilot is selected. |
-| GitHub Copilot Model Name | string | No | gpt-4o | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-4o. Visible when GitHub Copilot is selected. |
+| GitHub Copilot Model Name | string | No | gpt-5-mini | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-5-mini. Visible when GitHub Copilot is selected. |
 | GitHub Copilot Request Timeout (ms) | string | No | 120000 | Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute). Visible when GitHub Copilot is selected. |
 | System Instruction Source | pickList | Yes | Inline | Select the source of the system instruction. Options: Inline, File. |
 | System Prompt File | string | No | (empty) | Path to the system prompt file. Supported formats: .md, .txt, .json, .yaml, .yml, .xml, .html. Optional. If the file is not found or empty, falls back to inline instruction. |

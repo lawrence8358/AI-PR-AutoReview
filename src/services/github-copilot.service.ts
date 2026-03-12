@@ -1,5 +1,8 @@
 import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
+import * as path from 'path';
+import * as fs from 'fs';
+import { execFileSync } from 'child_process';
 
 /**
  * GitHub Copilot AI 服務實作
@@ -14,19 +17,22 @@ import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 export class GithubCopilotService implements AIService {
     private githubToken: string;
     private serverAddress: string;
+    private copilotCliPath: string;
     private model: string;
     private timeout: number;
     private client: any; // CopilotClient 實例，延遲初始化
+    private approveAll: any; // SDK approveAll helper，延遲初始化
 
     /**
      * 建立 GitHub Copilot 服務實例
      * @param githubToken - GitHub Token (格式: github_pat_xxx, gho_xxx, ghu_xxx)。用於 Token 認證模式
      * @param serverAddress - CLI Server 位址 (格式: host:port)。用於遠端 CLI Server 模式
-     * @param model - 模型名稱，預設為 'gpt-4o'
+     * @param model - 模型名稱，預設為 'gpt-5-mini'
      * @param timeout - 請求超時時間（毫秒）。若未提供，預設為 60000 ms (1分鐘)
+     * @param copilotCliPath - Copilot CLI 可執行檔路徑（選用）。未提供時自動從 node_modules 探索
      * @throws {Error} 當參數格式錯誤或參數互斥時拋出錯誤
      */
-    constructor(githubToken?: string, serverAddress?: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.GITHUB_COPILOT], timeout?: number) {
+    constructor(githubToken?: string, serverAddress?: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.GITHUB_COPILOT], timeout?: number, copilotCliPath?: string) {
         // 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
         if (githubToken && githubToken.trim() !== '' && serverAddress && serverAddress.trim() !== '') {
             throw new Error('⛔ GitHub Token and CLI Server Address cannot be provided at the same time. Please choose one authentication method.');
@@ -50,7 +56,12 @@ export class GithubCopilotService implements AIService {
             this.serverAddress = ''; // 空字串表示使用本機 CLI
         }
 
-        this.model = model || 'gpt-4o';
+        // 處理 copilotCliPath：優先使用明確提供的路徑，其次環境變數，最後自動探索
+        this.copilotCliPath = (copilotCliPath && copilotCliPath.trim() !== '') ? copilotCliPath.trim()
+            : (process.env.COPILOT_CLI_PATH && process.env.COPILOT_CLI_PATH.trim() !== '') ? process.env.COPILOT_CLI_PATH.trim()
+            : '';
+
+        this.model = model || 'gpt-5-mini';
         // 處理 timeout：如果提供了值則使用，否則預設 60000 ms
         this.timeout = timeout !== undefined ? timeout : 60000;
     }
@@ -86,6 +97,7 @@ export class GithubCopilotService implements AIService {
                 systemMessage: {
                     content: systemInstruction
                 },
+                onPermissionRequest: this.approveAll,
                 // Note: SDK 不直接支援 temperature 和 maxTokens 參數
                 // 這些參數可能需要透過 provider config 或其他方式設定
             };
@@ -121,10 +133,10 @@ export class GithubCopilotService implements AIService {
 
             // 發送 Prompt 並等待回應完成
             const startTime = Date.now();
-            console.log(`⏳ Sending request to GitHub Copilot (timeout: ${this.timeout}ms)...`); 
+            console.log(`⏳ Sending request to GitHub Copilot (timeout: ${this.timeout}ms)...`);
             const response = await session.sendAndWait({
                 prompt
-            }, this.timeout); 
+            }, this.timeout);
             const endTime = Date.now();
             const duration = ((endTime - startTime) / 1000).toFixed(2);
             console.log(`\n⏱️ GitHub Copilot response completed in ${duration} seconds`);
@@ -176,6 +188,7 @@ export class GithubCopilotService implements AIService {
 
         } finally {
             await this.client.stop();
+            this.client = null;
         }
     }
 
@@ -191,14 +204,18 @@ export class GithubCopilotService implements AIService {
 
         try {
             // 動態引入 GitHub Copilot SDK
-            const { CopilotClient } = await import('@github/copilot-sdk');
+            const { CopilotClient, approveAll } = await import('@github/copilot-sdk');
+            this.approveAll = approveAll;
 
             // 根據參數組合決定連接模式
             if (this.githubToken) {
                 // Token 模式：使用使用者提供的 GitHub Token
+                const resolvedCliPath = this.resolveCopilotCliPath();
+                console.log(`📍 Using Copilot CLI at: ${resolvedCliPath}`);
                 this.client = new CopilotClient({
                     githubToken: this.githubToken,
-                    useLoggedInUser: false
+                    useLoggedInUser: false,
+                    cliPath: resolvedCliPath,
                 });
                 console.log(`✅ Connected to GitHub Copilot using provided token`);
             } else if (this.serverAddress) {
@@ -209,7 +226,11 @@ export class GithubCopilotService implements AIService {
                 console.log(`✅ Connected to GitHub Copilot CLI Server at ${this.serverAddress}`);
             } else {
                 // 本機 CLI 模式：使用 Build Agent 預先設定的授權
-                this.client = new CopilotClient();
+                const resolvedCliPath = this.resolveCopilotCliPath();
+                console.log(`📍 Using Copilot CLI at: ${resolvedCliPath}`);
+                this.client = new CopilotClient({
+                    cliPath: resolvedCliPath,
+                });
                 console.log(`✅ Connected to GitHub Copilot CLI (local agent)`);
             }
         } catch (error: any) {
@@ -231,6 +252,55 @@ export class GithubCopilotService implements AIService {
                 throw new Error(`⛔ Failed to connect to GitHub Copilot CLI (local agent): ${error.message}`);
             }
         }
+    }
+
+    /**
+     * 解析 Copilot CLI 路徑
+     * 優先順序：明確指定 → 環境變數 → 平台專屬二進位檔 → 系統 PATH → 拋出錯誤
+     *
+     * 注意：此方法不會回傳 undefined。在 esbuild CJS bundle 環境中，SDK 內部的
+     * getBundledCliPath() 會使用 import.meta.resolve() 導致 crash，因此必須始終
+     * 提供 cliPath 來短路該呼叫。
+     */
+    private resolveCopilotCliPath(): string {
+        // 1. 已在 constructor 中處理明確路徑與環境變數
+        if (this.copilotCliPath) {
+            if (fs.existsSync(this.copilotCliPath)) {
+                return this.copilotCliPath;
+            }
+            console.warn(`⚠️ Specified Copilot CLI path not found: ${this.copilotCliPath}, falling back to auto-detect`);
+        }
+
+        // 2. 嘗試從 @github/copilot 平台套件解析原生二進位檔
+        const platformPkg = `@github/copilot-${process.platform}-${process.arch}`;
+        try {
+            const binaryPath = require.resolve(platformPkg);
+            if (fs.existsSync(binaryPath)) {
+                return binaryPath;
+            }
+        } catch {
+            // 平台套件未安裝，繼續嘗試其他方式
+        }
+
+        // 3. 嘗試在系統 PATH 中查找 copilot CLI（適用於全域安裝場景）
+        try {
+            const command = process.platform === 'win32' ? 'where' : 'which';
+            const result = execFileSync(command, ['copilot'], { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
+            const cliPath = result.trim().split(/\r?\n/)[0]; // 取第一個結果
+            if (cliPath && fs.existsSync(cliPath)) {
+                return cliPath;
+            }
+        } catch {
+            // CLI 不在 PATH 中
+        }
+
+        // 4. 無法找到 CLI → 拋出明確錯誤（避免 SDK 呼叫 getBundledCliPath 導致 import.meta.resolve crash）
+        throw new Error(
+            'Copilot CLI not found. Please either:\n' +
+            '  1. Set the "inputGitHubCopilotCliPath" task input to the CLI executable path\n' +
+            '  2. Set the "COPILOT_CLI_PATH" environment variable\n' +
+            '  3. Install @github/copilot globally: npm install -g @github/copilot'
+        );
     }
 
     /**

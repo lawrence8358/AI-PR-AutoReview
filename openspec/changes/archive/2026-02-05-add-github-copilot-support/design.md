@@ -60,7 +60,7 @@
 │             │                                                 │
 │             ↓                                                 │
 │  ┌─────────────────────────────┐                            │
-│  │   AI Model (gpt-4o, etc)    │                            │
+│  │   AI Model (gpt-5-mini, etc)    │                            │
 │  └─────────────────────────────┘                            │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -132,7 +132,7 @@ export class GithubCopilotService implements AIService {
     private model: string;
     // 不需要 apiKey 欄位
 
-    constructor(serverAddress: string, model: string = 'gpt-4o') {
+    constructor(serverAddress: string, model: string = 'gpt-5-mini') {
         // 驗證 serverAddress
     }
 }
@@ -295,7 +295,7 @@ private async initializeClient(): Promise<void> {
 export class GithubCopilotService implements AIService {
     // ===== 狀態 =====
     private serverAddress: string;      // 例如 "192.168.1.100:8080"
-    private model: string;               // 例如 "gpt-4o"
+    private model: string;               // 例如 "gpt-5-mini"
     private client: CopilotClient;       // SDK Client 實例
 
     // ===== 公開方法 =====
@@ -354,7 +354,7 @@ export class GithubCopilotService implements AIService {
    inputs = {
        aiProvider: 'GitHubCopilot',
        serverAddress: '192.168.1.100:8080',
-       modelName: 'gpt-4o',
+       modelName: 'gpt-5-mini',
        ...
    }
 
@@ -362,12 +362,12 @@ export class GithubCopilotService implements AIService {
    ↓
    aiProvider.registerService('GitHubCopilot', {
        serverAddress: '192.168.1.100:8080',
-       modelName: 'gpt-4o'
+       modelName: 'gpt-5-mini'
    })
 
 4️⃣ 建立服務實例（工廠模式）
    ↓
-   service = new GithubCopilotService('192.168.1.100:8080', 'gpt-4o')
+   service = new GithubCopilotService('192.168.1.100:8080', 'gpt-5-mini')
 
 5️⃣ 取得 PR 差異
    ↓
@@ -390,7 +390,7 @@ export class GithubCopilotService implements AIService {
    6.2 建立 Session
        ↓
        session = await client.createSession({
-           model: 'gpt-4o',
+           model: 'gpt-5-mini',
            systemMessage: systemInstruction,
            temperature: 1.0,
            maxTokens: 4096

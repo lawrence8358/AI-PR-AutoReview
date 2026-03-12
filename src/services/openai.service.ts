@@ -9,7 +9,7 @@ export class OpenAIService extends BaseOpenAICompatibleService {
     /**
      * 建立 OpenAI 服務實例
      * @param apiKey - OpenAI API 金鑰
-     * @param model - 模型名稱，預設為 'gpt-4o'
+     * @param model - 模型名稱，預設為 'gpt-5-mini'
      * @throws {Error} 當 apiKey 未提供時拋出錯誤
      */
     constructor(apiKey: string, model: string = DEFAULT_MODELS[AI_PROVIDERS.OPENAI]) {

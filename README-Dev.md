@@ -110,7 +110,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts [參數]
 
 **AI 提供者參數**：
 - `--ai <PROVIDER>` - AI 提供者：'claude', 'openai', 'grok', 'google'（預設：claude）
-- `--model <MODEL_NAME>` - 模型名稱（例如：claude-haiku-4-5、gpt-4o、gemini-2.5-flash）
+- `--model <MODEL_NAME>` - 模型名稱（例如：claude-haiku-4-5、gpt-5-mini、gemini-2.5-flash）
 - `--key <API_KEY>` - API Key（或使用環境變數）
 
 **功能開關參數**：
@@ -157,7 +157,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --owner myuser \
   --repo myrepo \
   --ai openai \
-  --model gpt-4o \
+  --model gpt-5-mini \
   --throttle false
 ```
 
@@ -171,7 +171,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --project MyProject \
   --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
   --ai githubcopilot \
-  --model gpt-4o \
+  --model gpt-5-mini \
   --github-token github_pat_YOUR_TOKEN_HERE \
   --throttle true
 ```
@@ -186,7 +186,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --project MyProject \
   --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
   --ai githubcopilot \
-  --model gpt-4o \
+  --model gpt-5-mini \
   --server-address 10.10.10.111:8080 \
   --timeout 120000 \
   --throttle true
@@ -202,7 +202,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --project MyProject \
   --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
   --ai githubcopilot \
-  --model gpt-4o \
+  --model gpt-5-mini \
   --throttle true
 ```
 
@@ -240,7 +240,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
 | ClaudeAPIKey | 選用 | sk-ant-... | Claude API Key，若使用 Claude 時，此欄位必填 |
 | GitHubCopilotToken | 選用 | github_pat_xxx | GitHub Fine-grained Personal Access Token（格式：github_pat_xxx），用於 Token 模式認證。**不能與 GitHubCopilotServerAddress 同時使用** |
 | GitHubCopilotServerAddress | 選用 | localhost:8080 | GitHub Copilot CLI Server 位址（格式: host:port）。若未提供且未提供 Token，將使用本機的 GitHub Copilot CLI（需先完成 `copilot auth login`）。**不能與 GitHubCopilotToken 同時使用** |
-| ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-4o、grok-beta、claude-haiku-4-5） |
+| ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-5-mini、grok-beta、claude-haiku-4-5） |
 | SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令 |
 | PromptTemplate | 必要 | {code_changes} | Prompt 範本，index.ts 以 `{code_changes}` 作為佔位符 |
 | MaxOutputTokens | 選用 | 4096 | AI 回應最大 token 數量 |
@@ -605,7 +605,7 @@ new CopilotClient()  // 使用預設配置
    ```properties
    AiProvider=GitHubCopilot
    GitHubCopilotToken=github_pat_YOUR_TOKEN_HERE
-   ModelName=gpt-4o
+   ModelName=gpt-5-mini
    ```
 
 3. **執行 debug**
@@ -634,7 +634,7 @@ new CopilotClient()  // 使用預設配置
 2. **設定 .env**（不需要 Token 或 Server Address）
    ```properties
    AiProvider=GitHubCopilot
-   ModelName=gpt-4o
+   ModelName=gpt-5-mini
    ```
 
 3. **執行 debug**
@@ -648,7 +648,7 @@ new CopilotClient()  // 使用預設配置
    ```properties
    AiProvider=GitHubCopilot
    GitHubCopilotServerAddress=localhost:8080
-   ModelName=gpt-4o
+   ModelName=gpt-5-mini
    ```
 
 3. **啟動測試 CLI Server**

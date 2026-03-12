@@ -171,7 +171,7 @@ The system **SHALL** support optional model name specification for GitHub Copilo
 **Given** 使用者選擇 GitHub Copilot + 內部網路模式
 **And** 未明確指定模型名稱
 **When** Pipeline 執行時
-**Then** 應使用預設模型："gpt-4o"
+**Then** 應使用預設模型："gpt-5-mini"
 
 #### Scenario: 自訂模型名稱
 **Given** 使用者在 "Model Name" 欄位輸入 "gpt-4"

@@ -112,7 +112,7 @@ if (this.githubToken && this.serverAddress) {
 constructor(
     githubToken?: string,
     serverAddress?: string,
-    model: string = 'gpt-4o',
+    model: string = 'gpt-5-mini',
     timeout?: number
 )
 ```
@@ -184,19 +184,19 @@ if (this.githubToken) {
 Token 模式：
 🚩 Generating response using GitHub Copilot...
 + Authentication: Token
-+ Model: gpt-4o
++ Model: gpt-5-mini
 ...
 
 遠端 CLI Server 模式：
 🚩 Generating response using GitHub Copilot...
 + Server: 192.168.1.100:8080
-+ Model: gpt-4o
++ Model: gpt-5-mini
 ...
 
 本機 CLI 模式：
 🚩 Generating response using GitHub Copilot...
 + Server: local agent
-+ Model: gpt-4o
++ Model: gpt-5-mini
 ...
 ```
 

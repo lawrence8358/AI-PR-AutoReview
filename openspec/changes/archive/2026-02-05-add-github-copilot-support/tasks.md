@@ -149,9 +149,9 @@ export interface PipelineInputs {
     "name": "inputGitHubCopilotModelName",
     "type": "string",
     "label": "Model Name",
-    "defaultValue": "gpt-4o",
+    "defaultValue": "gpt-5-mini",
     "required": false,
-    "helpMarkDown": "選填。預設為 gpt-4o。",
+    "helpMarkDown": "選填。預設為 gpt-5-mini。",
     "visibleRule": "inputAiProvider == GitHubCopilot && inputGitHubCopilotNetworkType == Intranet"
 }
 ```
@@ -459,7 +459,7 @@ const serverAddress = process.env.GitHubCopilotServerAddress;
 # GitHub Copilot (選擇 GitHubCopilot 時)
 # AiProvider=GitHubCopilot
 # GitHubCopilotServerAddress=192.168.1.100:8080
-# ModelName=gpt-4o
+# ModelName=gpt-5-mini
 ```
 
 **驗證**：文件清晰易懂
