@@ -25,6 +25,7 @@
         "devscripts:ai": "esbuild devscripts/ai-comment.ts --bundle --platform=node --target=node22 --outfile=dist-dev/devscripts/ai-comment.js --format=cjs --sourcemap && node --env-file=./devscripts/.env ./dist-dev/devscripts/ai-comment.js",
         "devscripts:pr-changes": "esbuild devscripts/pr-changes.ts --bundle --platform=node --target=node22 --outfile=dist-dev/devscripts/pr-changes.js --format=cjs --sourcemap && node --env-file=./devscripts/.env ./dist-dev/devscripts/pr-changes.js",
         "devscripts:pr-comment": "esbuild devscripts/pr-comment.ts --bundle --platform=node --target=node22 --outfile=dist-dev/devscripts/pr-comment.js --format=cjs --sourcemap && node --env-file=./devscripts/.env ./dist-dev/devscripts/pr-comment.js",
+        "devscripts:test-copilot": "esbuild devscripts/test-copilot-cli.ts --bundle --platform=node --target=node22 --outfile=dist-dev/devscripts/test-copilot-cli.js --format=cjs --sourcemap && node --env-file=./devscripts/.env ./dist-dev/devscripts/test-copilot-cli.js",
         "packaging:install-tool": "npm install -g tfx-cli",
         "packaging:package": "npm run build && tfx extension create --manifest-globs vss-extension.json --output-path ./packages"
     },

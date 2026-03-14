@@ -10,7 +10,8 @@ d:\Project\AiPrCodeReview
 │   ├── .env                 # 環境變數設定檔（請勿提交正式環境的金鑰）
 │   ├── ai-comment.ts        # 測試 AI 服務 (Google/OpenAI/Grok/Claude)
 │   ├── pr-changes.ts        # 測試取得 PR 變更
-│   └── pr-comment.ts        # 測試新增 PR 評論
+│   ├── pr-comment.ts        # 測試新增 PR 評論
+│   └── test-copilot-cli.ts  # 測試 GithHub Copilot CLI
 ├── images/                  # 擴充功能圖示
 │   ├── extension-icon.png
 │   └── extension-icon-small.png
