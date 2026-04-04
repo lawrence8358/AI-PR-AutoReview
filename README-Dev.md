@@ -60,6 +60,7 @@ d:\Project\AiPrCodeReview
   + `npm run devscripts:pr-changes` - 測試取得 PR 變更
   + `npm run devscripts:pr-comment` - 測試新增 PR 評論
   + `npx ts-node DEVSCRIPTS/test-pr-review.ts` - 完整 PR 審查測試工具（詳見下方說明）
+  + `npx ts-node devscripts/inline-comment.ts` - 行內評論（精準行號標註）整合測試（詳見下方說明）
 - 本地開發模擬 pipeline 執行，請修改好 `devscripts/.env` 後，執行 `npm run debug`。
 - 執行單元測試：`npm test` (使用 `mocha` 和 `ts-node` 執行 `test/**/*.spec.ts`)。
 
@@ -70,7 +71,7 @@ d:\Project\AiPrCodeReview
 - `npm run copy`：將 `src/task.json` 和 `images/extension-icon-small.png` 複製至 `dist/`。
 - `npm run bundle`：使用 `esbuild` 將 TypeScript 打包至 `dist/index.js`。
 - `npm run build`：執行完整建置流程，包含同步版本號（`sync-taskjson.js`）、清理、型別檢查、打包與複製檔案。
-- `npm run debug`：編譯後以 debug 模式執行（package.json 內為 `tsc && node --env-file=./devscripts/.env ./dist/index.js --debug`），會改為從環境變數讀取輸入值（方便本地模擬）。
+- `npm run debug`：編譯後以 debug 模式執行（package.json 內為 `esbuild src/index.ts --bundle ... && node --env-file=./devscripts/.env ./dist/index.js --debug`），會改為從環境變數讀取輸入值（方便本地模擬）。
 - `npm run devscripts:ai`：編譯 devscripts（使用 `tsconfig.devscripts.json`）並執行 `dist/devscripts/ai-comment.js`，執行呼叫 AI 服務並印出回應。
 - `npm run devscripts:pr-changes`：執行取得 PR 變更檔案並列印內容（需有效的 DevOps env 設定）。
 - `npm run devscripts:pr-comment`：執行 DevOps API 新增 PR 評論（需有效的 DevOps env 設定）。
@@ -79,7 +80,7 @@ d:\Project\AiPrCodeReview
 
 ### test-pr-review.ts 測試工具
 
-`test-pr-review.ts` 是一個完整的 PR 審查測試工具，用於本地快速測試完整的 PR 審查流程（包括取得 PR 變更和調用 AI 服務）。
+`test-pr-review.ts` 是一個完整的 PR 審查測試工具，用於本地快速測試完整的 PR 審查流程（包括取得 PR 變更和調用 AI 服務）。各審查模式參數的排列組合說明，請參考 [PARAMETER-COMBINATIONS.zh-TW.md](./PARAMETER-COMBINATIONS.zh-TW.md)。
 
 **使用方式**：
 ```bash
@@ -118,6 +119,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts [參數]
 - `--throttle <true|false>` - 啟用節流模式（預設：true，僅送差異）
 - `--incremental <true|false>` - 啟用增量 Diff 模式（預設：false）
 - `--verbose <true|false>` - 顯示詳細日誌（預設：true）
+- `--inline <true|false>` - 啟用行內評論模式驗證（預設：false；true 時使用 JSON 系統指令並驗證解析結果，但**不**發佈評論；若要實際發佈請使用 `inline-comment.ts`）
 
 **使用範例**：
 
@@ -189,7 +191,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --ai githubcopilot \
   --model gpt-5-mini \
   --server-address 10.10.10.111:8080 \
-  --timeout 120000 \
+  --timeout 300000 \
   --throttle true
 ```
 
@@ -220,8 +222,72 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
 - 調試 Token 計算和節流模式設定
 
 
+### inline-comment.ts 整合測試工具
+
+`inline-comment.ts` 是行內評論（精準行號標註）功能的專用整合測試工具，用於驗證完整的行內標註流程：取得 PR 變更 → AI 回傳 JSON → 解析 → 發佈摘要 + 行內評論。
+
+> **行內評論模式原理**：啟用後，系統指令會自動切換為 JSON 格式指令，要求 AI 回傳包含 `file`、`lineStart`、`lineEnd`、`severity` 等欄位的結構化 JSON（`InlineReviewResult`）。解析後，工具會先發佈一則統計摘要評論，再逐一發佈錨定至特定行號的行內評論（Azure DevOps 使用 `threadContext`，GitHub 使用 Review Comment API）。
+
+**使用方式**：
+```bash
+npx ts-node devscripts/inline-comment.ts [參數]
+```
+
+**重要參數**：
+- `--pr <ID>` - Pull Request ID（必填，或在 `.env` 設定 `DevOpsPRId`）
+- `--provider <azure|github>` - DevOps 提供者（預設 azure）
+- `--ai <PROVIDER>` - AI 提供者（預設 claude）
+- `--dry-run` - 只驗證 JSON 解析，不實際發佈評論（**建議先用此模式確認格式正確**）
+
+**使用範例**：
+
+1. **Dry-run 驗證（僅驗證 AI 是否回傳正確 JSON，不發佈）**
+```bash
+npx ts-node devscripts/inline-comment.ts \
+  --provider azure \
+  --pr 123 \
+  --ai claude \
+  --dry-run
+```
+
+2. **實際發佈行內評論至 Azure DevOps PR**
+```bash
+npx ts-node devscripts/inline-comment.ts \
+  --provider azure \
+  --pr 123 \
+  --org https://dev.azure.com/myorg \
+  --project MyProject \
+  --repo-id 9efec7a7-ef7f-4c2b-8bb8-e3e4f9c2e0ca \
+  --ai claude \
+  --model claude-haiku-4-5
+```
+
+3. **GitHub PR 行內評論**
+```bash
+npx ts-node devscripts/inline-comment.ts \
+  --provider github \
+  --owner myuser \
+  --repo myrepo \
+  --pr 456 \
+  --ai openai \
+  --model gpt-5-mini
+```
+
+**輸出說明**：
+- 印出 AI 的原始 JSON 回應
+- 顯示解析後的問題清單（檔案、行號、嚴重程度）
+- Dry-run：只列印，不發佈
+- 正式模式：先發統計摘要評論，再逐一發行內評論
+
+**注意事項**：
+- 行號必須對應到 diff 的新版本（右側，`+` 行），若 AI 回傳的行號不在 diff 範圍內，DevOps API 可能拒絕並跳過該則評論（系統不會失敗，只會印 warning）
+- GitHub 行內評論要求行號必須存在於 PR diff 中；超出 diff 範圍的行號會被 API 拒絕
+- 最多發佈 20 則行內評論（超過的問題會在摘要中說明）
+
 
 ## devscripts/.env：用途與本機測試
+
+> ⚠️ **注意**：`devscripts/.env` 為**本地開發測試專用**，包含敏感資訊（API Key、Token 等），請勿推版或用於正式環境。
 
 `devscripts/.env` 用於在本機快速設定`測試`需要的變數，讓 `devscripts` 下的測試腳本與 `src/index.ts` 的 debug 模式能夠模擬實際 Azure DevOps pipeline 與 AI Provider 的互動，請務必不要把含有真實金鑰或 PAT 的檔案提交到版本控制。
 
@@ -241,16 +307,22 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
 | ClaudeAPIKey | 選用 | sk-ant-... | Claude API Key，若使用 Claude 時，此欄位必填 |
 | GitHubCopilotToken | 選用 | github_pat_xxx | GitHub Fine-grained Personal Access Token（格式：github_pat_xxx），用於 Token 模式認證。**不能與 GitHubCopilotServerAddress 同時使用** |
 | GitHubCopilotServerAddress | 選用 | localhost:8080 | GitHub Copilot CLI Server 位址（格式: host:port）。若未提供且未提供 Token，將使用本機的 GitHub Copilot CLI（需先完成 `copilot auth login`）。**不能與 GitHubCopilotToken 同時使用** |
+| GitHubCopilotCliPath | 選用 | C:\Tools\copilot\copilot.exe | GitHub Copilot CLI 執行檔的絕對路徑。若為空，依序嘗試環境變數 `COPILOT_CLI_PATH`，再嘗試系統 PATH |
 | ModelName | 必要 | gemini-2.5-flash | 要使用的模型名稱（例如 gemini-2.5-flash、gpt-5-mini、grok-beta、claude-haiku-4-5） |
-| SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令 |
-| PromptTemplate | 必要 | {code_changes} | Prompt 範本，index.ts 以 `{code_changes}` 作為佔位符 |
-| MaxOutputTokens | 選用 | 4096 | AI 回應最大 token 數量 |
-| Temperature | 選用 | 1.0 | AI 生成隨機性 |
+| SystemInstructionSource | 選填 | Built-in | 系統指令來源：Built-in / Inline / File |
+| SystemPromptFile | 選用 | ./prompts/review.md | 系統指令檔案路徑（當 SystemInstructionSource=File 時使用）。若檔案不存在或為空，自動回退到 SystemInstruction |
+| SystemInstruction | 選用 | 你是一位資深工程師... | 傳給 AI 的 system 指令。啟用行內評論模式時，此內容會自動附加 JSON 格式需求（而非被取代） |
+| ResponseLanguage | 必要 | Taiwanese (zh-TW) | AI 回應語言，例如 Taiwanese (zh-TW)、English (en-US) |
+| MaxOutputTokens | 選用 | （未設定） | AI 回應最大 token 數量，留空則使用模型預設限制 |
+| Temperature | 選用 | 0.2 | AI 生成隨機性 |
 | FileExtensions | 選用 | .cs,.ts,.js | 要納入的檔案副檔名（逗號分隔） |
 | BinaryExtensions | 選用 | .exe,.dll,.jpg | 要排除的二進位檔副檔名 |
 | EnableThrottleMode | 選用 | true | 啟用 AI 節流模式（true：僅送差異；false：送整個檔案） |
-| EnableIncrementalDiff | 選用 | false | 啟用增量 Diff 模式（true：僅審查最新 push；false：審查所有 PR 變更）。**注意**：只有當 `EnableThrottleMode` 為 `true` 時此選項才有效 |
-| ShowReviewContent | 選用 | false | 顯示審核內容（true：印出送給 AI 的程式碼內容、System Instruction、Prompt 以及 AI 回應；false：不顯示） |
+| EnableIncrementalDiff | 選用 | true | 啟用增量 Diff 模式（true：僅審查最新 push 的檔案；false：審查所有 PR 變更）。**注意（Azure DevOps）**：確實根據最新 push 過濾檔案清單。**注意（GitHub）**：GitHub API 始終回傳全部 PR 檔案，作用有限。此選項在 UI 中，只有 `EnableThrottleMode=true` 時才顯示 |
+| ShowReviewContent | 選用 | true | 顯示審核內容（true：印出送給 AI 的程式碼內容、System Instruction、Prompt 以及 AI 回應；false：不顯示） |
+| EnableInlineComments | 選用 | true | 啟用行內評論模式（true：AI 回傳 JSON，發佈精準行號標註的行內評論；false：AI 回傳 Markdown，發佈單一摘要評論）。啟用時系統指令會自動**附加** JSON 格式需求（原有 SystemInstruction 內容保留） |
+| GroupInlineCommentsByFile | 選用 | false | 合併同一檔案的行內評論（true：同檔案問題合併為一則；false：每個問題各自一則）。僅 EnableInlineComments=true 時有效 |
+| InlineStrictMode | 選用 | false | 嚴厲模式（true：AI 額外回報 suggestion 級別問題；false：僅回報 critical / warning）。僅 EnableInlineComments=true 時有效 |
 
 .env 範例說明（切勿提交含真實金鑰的檔案）：
 
@@ -280,9 +352,12 @@ ModelName=gemini-2.5-flash
 # 模式 3: 本機 CLI（不填寫任何參數，使用已登入的 CLI）
 
 SystemInstruction=你是一位資深軟體工程師，請協助進行程式碼審查與分析。
-PromptTemplate={code_changes}
-MaxOutputTokens=4096
-Temperature=1.0
+ResponseLanguage=Taiwanese (zh-TW)
+MaxOutputTokens=
+Temperature=0.2
+# EnableInlineComments=true   # 啟用行內評論模式（啟用後 SystemInstruction 內容保留，但自動附加 JSON 格式需求）
+# GroupInlineCommentsByFile=false  # EnableInlineComments=true 時有效：同檔案問題合併
+# InlineStrictMode=false        # EnableInlineComments=true 時有效：true 時額外回報 suggestion
 
 # File filters
 FileExtensions=.cs,.ts,.js,.aspx,.html
@@ -290,8 +365,8 @@ BinaryExtensions=.exe,.dll,.jpg,.png
 
 # Other settings
 EnableThrottleMode=true
-EnableIncrementalDiff=false
-ShowReviewContent=false
+EnableIncrementalDiff=true
+ShowReviewContent=true
 ```
 
 注意：`src/index.ts` 在 debug 模式會從 `process.env` 讀取（而非 Azure Pipelines 的變數）。
@@ -306,22 +381,43 @@ ShowReviewContent=false
 
 #### EnableIncrementalDiff（增量 Diff 模式）
 - **預設值**：`false`（停用）
-- **重要提示**：此選項只有在 `EnableThrottleMode=true` 時才有效
+- **重要提示（Azure DevOps）**：此選項確實根據最新 push 過濾要審查的檔案清單
+- **重要提示（GitHub）**：GitHub API 始終回傳全 PR 所有檔案，此選項對 GitHub 的作用有限
 - **說明**：控制是否只審查最新 push 的變更，或審查所有 iteration 的變更
-  - `true`：增量模式，僅審查最新推送的變更
+  - `true`：增量模式，僅審查最新推送的變更（Azure DevOps 實際過濾檔案清單）
   - `false`：全量模式，審查所有 PR 迭代的變更
 
-**範例場景**：
+**範例場景（Azure DevOps）**：
 - PR 有 3 次推送（3 個 iterations）
 - Iteration 1：新增檔案 A
 - Iteration 2：在檔案 A 中新增方法 B
 - Iteration 3：在方法 B 中新增註釋
 
 **不同模式的結果**：
-- `EnableThrottleMode=true, EnableIncrementalDiff=false`：審查所有變更（A 新增 + 方法 B 新增 + 註釋新增）
-- `EnableThrottleMode=true, EnableIncrementalDiff=true`：只審查最新變更（只有註釋新增）
-- `EnableThrottleMode=false, EnableIncrementalDiff=false`：送整個檔案內容給 AI（包含所有內容）
-- `EnableThrottleMode=false, EnableIncrementalDiff=true`：無作用，等同於 `false, false`（送整個檔案內容）
+- `EnableThrottleMode=true, EnableIncrementalDiff=false`：審查所有變更（A 新增 + 方法 B 新增 + 註釋新增），以 diff 格式送給 AI
+- `EnableThrottleMode=true, EnableIncrementalDiff=true`：只審查最新變更（只有註釋新增），以 diff 格式送給 AI
+- `EnableThrottleMode=false, EnableIncrementalDiff=false`：送所有 PR 變更檔案的完整內容給 AI
+- `EnableThrottleMode=false, EnableIncrementalDiff=true`：**（Azure DevOps）** 仍根據最新 push 過濾檔案清單，但送完整檔案內容（非 diff）給 AI；**（GitHub）** 等同於 `false, false`
+
+
+#### EnableInlineComments（行內評論模式）
+- **預設值**：`true`（啟用）
+- **說明**：控制 AI 回傳格式與評論發佈方式
+  - `false`：AI 回傳 Markdown，發佈單一摘要評論到 PR 討論串
+  - `true`：AI 回傳結構化 JSON，逐一發佈精準行號標註的行內評論，並附上摘要評論
+- **重要**：啟用時，`SystemInstruction` 內容**保留**，但自動附加 JSON 格式需求指令（`buildInlineJsonAppend`）
+
+#### GroupInlineCommentsByFile（合併行內評論）
+- **預設值**：`false`
+- **前提**：僅 `EnableInlineComments=true` 時有效
+- `true`：同一檔案的多個問題合併為一則行內評論（減少評論數量）
+- `false`：每個問題各自發佈一則行內評論（更精確的行號錨定）
+
+#### InlineStrictMode（嚴厲模式）
+- **預設值**：`false`
+- **前提**：僅 `EnableInlineComments=true` 時有效
+- `false`：AI 僅回報 critical 和 warning 問題（雜訊較少）
+- `true`：AI 額外回報 suggestion 級別問題（更全面但評論更多）
 
 
 ## 快速開始（PowerShell 範例）
@@ -445,7 +541,7 @@ GitHub Copilot 的整合與其他 AI Providers 有一些不同：
 
 2. **使用官方 SDK**
    - 使用 `@github/copilot-sdk` 連接到 CLI Server 或使用 Token 認證
-   - SDK 版本：0.1.21（Technical Preview）
+   - SDK 版本：0.2.1（Technical Preview）
 
 3. **延遲初始化**
    - Client 連接在首次呼叫 `generateComment()` 時建立

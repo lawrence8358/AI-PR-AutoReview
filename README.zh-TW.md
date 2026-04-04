@@ -20,6 +20,7 @@
 + **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中，與開發團隊無縫協作。
 + **高度可自訂**：可詳盡自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)，打造專屬的 AI Reviewer。
 + **智慧過濾**：可精確指定要包含或排除的檔案副檔名，專注於核心程式碼。
++ **精準行號標註（行內評論）**：AI 評論直接錨定至修改行號，顯示在 Files Changed 頁籤，便於精確定位問題所在。
 
 
 ## 安裝
@@ -152,7 +153,7 @@
 
    建立新 Token，並依據儲存庫類型勾選對應範圍：
 
-   ![Classic Token 權限設定](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI7.png)
+   ![Classic Token 權限設定](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/CI7.png)
 
    - **公開儲存庫**：勾選 `public_repo` — Access public repositories（提供公開儲存庫的讀寫存取，包含 PR 評論）
    - **私有儲存庫**：勾選 `repo` — Full control of private repositories（需勾選最上層的 `repo`；**僅勾選子項目**如 `public_repo` 或 `repo:status` 對私有儲存庫**不足以**寫入 PR 評論）
@@ -215,12 +216,14 @@
 ## 📋 Task 參數詳解
 以下是此 Task 支援的所有輸入參數：
 
+詳細審核模式參數排列組合說明，請參考 [PARAMETER-COMBINATIONS.zh-TW.md](./PARAMETER-COMBINATIONS.zh-TW.md)。
+
 | 標籤 (Label) | 類型 (Type) | 必要 | 預設值 | 說明 |
 |---|---:|:---:|---|---|
 | AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)、Claude (Anthropic)、GitHub Copilot。 |
 | Gemini Model Name | string | 條件式 | gemini-2.5-flash | 輸入 Google Gemini 的模型名稱，選擇 Google 時必填。 |
 | Gemini API Key | string | 條件式 | 無 | 輸入 Google Gemini 的 API Key，選擇 Google 時必填。 |
-| OpenAI Model Name | string | 條件式 | gpt-5-mini-mini | 輸入 OpenAI 的模型名稱（例如 gpt-5-mini、gpt-5-mini-mini），選擇 OpenAI 時必填。 |
+| OpenAI Model Name | string | 條件式 | gpt-5-mini | 輸入 OpenAI 的模型名稱（例如 gpt-5、gpt-5-mini），選擇 OpenAI 時必填。 |
 | OpenAI API Key | string | 條件式 | 無 | 輸入 OpenAI 的 API Key，選擇 OpenAI 時必填。 |
 | Grok Model Name | string | 條件式 | grok-3-mini | 輸入 Grok 的模型名稱（例如 grok-3-mini），選擇 Grok 時必填。 |
 | Grok (xAI) API Key | string | 條件式 | 無 | 輸入 Grok (xAI) 的 API Key，選擇 Grok 時必填。 |
@@ -229,18 +232,22 @@
 | **GitHub Copilot Token** | string | 否 | 無 | **（選填）GitHub Fine-grained Personal Access Token**（格式：`github_pat_xxx`），用於向 GitHub Copilot 服務認證。從 GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens 取得。**必要權限**：帳戶權限 → Copilot Requests → 存取權：唯讀。**注意**：不支援 Classic token（`ghp_`）。**不能與 CLI Server Address 同時使用**。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot CLI Server Address | string | 否 | 無 | （選填）輸入 GitHub Copilot CLI Server 位址（IP 或 Domain + Port）。範例：192.168.1.100:8080 或 copilot.internal.company.com:8080。若未填寫且未提供 Token，則使用 Build Agent 內的 GitHub Copilot CLI。**不能與 GitHub Token 同時使用**。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot Model Name | string | 否 | gpt-5-mini | 輸入 GitHub Copilot 使用的模型名稱。選填，預設為 gpt-5-mini。選擇 GitHub Copilot 時顯示。 |
-| GitHub Copilot Request Timeout (ms) | string | 否 | 120000 | GitHub Copilot 請求超時時間（毫秒）。預設：120000 ms（2分鐘）。若清空此欄位，則預設為 60000 ms（1分鐘）。選擇 GitHub Copilot 時顯示。 |
-| System Instruction Source | pickList | 是 | Inline | 選擇系統指令的來源。選項: Inline (行內), File (檔案)。 |
+| GitHub Copilot Request Timeout (ms) | string | 否 | 300000 | GitHub Copilot 的請求逾時時間（毫秒）。預設值：300000 ms（5 分鐘）。選擇 GitHub Copilot 時顯示。 |
+| GitHub Copilot CLI Path | string | 否 | 無 | （選填）Build Agent 上 Copilot CLI 執行檔的絕對路徑。範例（Windows）：`C:\Tools\copilot\copilot.exe`。若為空，依序嘗試環境變數 `COPILOT_CLI_PATH`，再嘗試系統 PATH。選擇 GitHub Copilot 時顯示。 |
+| System Instruction Source | pickList | 是 | Built-in | 選擇系統指令的來源。選項: Built-in (內建), Inline (行內), File (檔案)。 |
 | System Prompt File | string | 否 | 無 | 系統提示詞檔案的路徑。支援格式: .md, .txt, .json, .yaml, .yml, .xml, .html。選填。如果檔案不存在或為空，會自動回退到行內指令。 |
 | System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。當 System Instruction Source 選擇 'Inline' 時使用。選填。如果為空，系統會自動使用預設的 Code Review 指令。 |
-| Prompt Template | multiLine | 是 | {code_changes} | AI 模型的自訂提示模板。`{code_changes}` 將被替換為實際的程式碼變更內容。 |
-| Max Output Tokens | string | 否 | 4096 | AI 模型回應的最大輸出 Token 數量。 |
-| Temperature | string | 否 | 1.0 | AI 模型的溫度設定，用於控制回應的隨機性。 |
+| Response Language | string | 是 | Taiwanese (zh-TW) | 指定 AI 回應的語言。用於控制 AI 審查評論的輸出語言。 |
+| Max Output Tokens | string | 否 | （未設定） | AI 模型回應的最大輸出 Token 數量。留空則使用模型預設限制。 |
+| Temperature | string | 否 | 0.2 | AI 模型的溫度設定，用於控制回應的隨機性。 |
 | File Extensions to Include | string | 否 | 無 | 要納入 Code Review 分析的副檔名列表（以逗號分隔）。若為空，預設包含所有非二進位檔案。 |
 | Binary File Extensions to Exclude | string | 否 | 無 | 要從 Code Review 分析中排除的二進位副檔名列表（以逗號分隔）。若為空值，系統會自動排除常見的二進位檔案類型（例如：.jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .md, .markdown, .txt, .gitignore）。若您提供自訂值，系統會採用您輸入的檔案類型列表。 |
-| Enable AI Throttle Mode | boolean | 否 | true | 啟用 AI 節流模式（預設啟用），當啟用時僅送程式碼差異給 AI 審查；停用時則送整個新檔案內容給 AI 審查。**注意**：當此選項關閉時，「啟用增量 Diff 模式」將無作用。 |
-| Enable Incremental Diff Mode | boolean | 否 | false | 啟用增量 Diff 模式，當啟用時僅審查最後一次推送（最新 iteration）的變更；停用時則審查所有 iteration 的 PR 變更。**重要提示**：此選項只有在「啟用 AI 節流模式」為開啟時才有效。當節流模式關閉時，此設定將被忽略。 |
-| Show Review Content | boolean | 否 | false | 顯示審核內容，當啟用時會將送給 AI 的程式碼變更內容、System Instruction、Prompt 以及 AI 回應印出到主控台，方便除錯使用。 |
+| Enable AI Throttle Mode | boolean | 否 | true | 啟用 AI 節流模式（預設啟用），當啟用時僅送程式碼差異給 AI 審查；停用時則送整個新檔案內容給 AI 審查。 |
+| Enable Incremental Diff Mode | boolean | 否 | true | 啟用增量 Diff 模式，當啟用時僅審查最後一次推送（最新 iteration）的變更；停用時則審查所有 iteration 的 PR 變更。**僅在「啟用 AI 節流模式」為開啟時有效**（節流模式關閉時此選項在 UI 自動隱藏）。**注意（Azure DevOps）**：確實根據最新 push 過濾審查檔案範圍。**注意**：`enableIncrementalDiff` 僅在 Azure DevOps 上有效。在 GitHub 上此設定無作用（GitHub API 始終回傳全部 PR 檔案）。 |
+| Enable Inline Comments (精準行號標註) | boolean | 否 | true | 啟用時（預設），AI 回傳結構化 JSON，評論以精準行號標註形式（Files Changed 頁籤）發佈。停用時，發佈單一摘要評論到 PR 討論串。**注意**：啟用此模式時，系統指令會自動附加 JSON 格式需求，覆寫 AI 的輸出格式，同時保留您自訂系統指令的語言偏好。 |
+| Group Inline Comments by File | boolean | 否 | false | 停用時（預設），每個問題各自發佈一則行內評論；啟用時，同一檔案的多個問題合併為單一行內評論區塊。**僅在啟用行內評論模式時顯示且有效**。 |
+| Inline Strict Mode (包含 Suggestion) | boolean | 否 | false | 停用時（預設），AI 僅回報 critical 和 warning 問題；啟用時，額外包含 suggestion 級別的問題，提供更詳盡的審查。**僅在啟用行內評論模式時顯示且有效**。 |
+| Show Review Content | boolean | 否 | true | 顯示審核內容（預設啟用），當啟用時會將送給 AI 的程式碼變更內容、System Instruction、Prompt 以及 AI 回應印出到主控台，方便除錯使用。 |
 
 
 ## 🎉 結果展示

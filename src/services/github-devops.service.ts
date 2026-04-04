@@ -216,6 +216,69 @@ export class GitHubDevOpsService extends BaseDevOpsService {
         return changeDetails;
     }
 
+    /**
+     * 新增 Pull Request 行內評論（精準行號標註）
+     * 使用 GitHub Pull Request Review Comment API，將評論錨定至特定檔案的特定行
+     * @param projectName - 專案名稱（GitHub 不使用此參數）
+     * @param repositoryId - owner/repo 格式
+     * @param pullRequestId - PR 編號
+     * @param filePath - 檔案路徑（以 / 開頭或不帶 / 皆可）
+     * @param lineStart - 起始行號（1-based）
+     * @param lineEnd - 結束行號（1-based，單行與 lineStart 相同）
+     * @param content - 評論內容
+     * @returns 評論的 ID
+     */
+    public async addInlinePullRequestComment(
+        projectName: string,
+        repositoryId: string,
+        pullRequestId: number,
+        filePath: string,
+        lineStart: number,
+        lineEnd: number,
+        content: string
+    ): Promise<number> {
+        const { owner, repo } = this.parseOwnerRepo(repositoryId);
+
+        // 取得 PR head commit SHA
+        const prInfo = await this.client.rest.pulls.get({
+            owner,
+            repo,
+            pull_number: pullRequestId
+        });
+        const commitId = prInfo.data.head.sha;
+
+        // GitHub 的檔案路徑不需要開頭的 /
+        const normalizedPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+
+        const params: any = {
+            owner,
+            repo,
+            pull_number: pullRequestId,
+            commit_id: commitId,
+            path: normalizedPath,
+            body: content,
+            line: lineEnd,
+            side: 'RIGHT'
+        };
+
+        // 多行標註需額外提供 start_line
+        if (lineStart !== lineEnd) {
+            params.start_line = lineStart;
+            params.start_side = 'RIGHT';
+        }
+
+        try {
+            const res = await this.client.rest.pulls.createReviewComment(params);
+            if (!res || !res.data || typeof res.data.id === 'undefined') {
+                throw new Error('⛔ Failed to create GitHub inline comment');
+            }
+            return Number(res.data.id as any);
+        } catch (error) {
+            console.error(`⛔ Error adding inline comment to ${normalizedPath}:${lineStart}`, error);
+            throw error;
+        }
+    }
+
     //#region Private Methods
 
     /**

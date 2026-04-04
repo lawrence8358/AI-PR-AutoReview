@@ -65,6 +65,19 @@ export abstract class BaseDevOpsService implements DevOpsService {
     ): Promise<number>;
 
     /**
+     * 新增 Pull Request 行內評論（由子類別實作）
+     */
+    public abstract addInlinePullRequestComment(
+        projectName: string,
+        repositoryId: string,
+        pullRequestId: number,
+        filePath: string,
+        lineStart: number,
+        lineEnd: number,
+        content: string
+    ): Promise<number>;
+
+    /**
      * 取得 Pull Request 變更的檔案內容（由子類別實作）
      * @param projectName - 專案名稱
      * @param repositoryId - Repository ID
@@ -207,20 +220,26 @@ export abstract class BaseDevOpsService implements DevOpsService {
     }
 
     /**
-     * 格式化新增檔案的內容（每行前面加上 + 符號）
+     * 格式化新增檔案的內容（每行前面加上 + 符號並標注行號）
      * @param content - 原始檔案內容
-     * @returns 格式化後的內容
+     * @returns 格式化後的內容，每行帶有精確行號標注
      */
     protected formatAddedFileContent(content: string): string {
-        return content
-            .split('\n')
-            .map(line => `+ ${line}`)
-            .join('\n');
+        const result: string[] = [];
+        let lineNum = 1;
+        for (const line of content.split('\n')) {
+            const trimmed = line.trim();
+            if (trimmed.length > 0) {
+                result.push(`+[L${lineNum}] ${trimmed}`);
+            }
+            lineNum++;
+        }
+        return result.join('\n');
     }
 
     /**
      * 處理 git diff 或 patch 輸出結果（已優化以減少 Token 消耗）
-     * 移除空白行、註釋和多餘的上下文
+     * 移除空白行、註釋和多餘的上下文，並在每個新增行標注精確行號
      * @param output - git diff 或 patch 命令的輸出內容
      * @returns 處理後的差異內容，只包含變更行和區塊標記
      */
@@ -229,23 +248,37 @@ export abstract class BaseDevOpsService implements DevOpsService {
         const contentStart = lines.findIndex((line: string) => line.startsWith('@@'));
         if (contentStart === -1) return '';
 
-        return lines
-            .slice(contentStart)
-            .filter((line: string) =>
-                line.startsWith('+') ||
-                line.startsWith('-') ||
-                line.startsWith('@@')
-            )
-            // 移除空白行和只有空白的行
-            .filter(line => line.trim().length > 1 || line.startsWith('@@'))
-            // 移除開頭和結尾的空白
-            .map(line => {
-                if (line.startsWith('+') || line.startsWith('-')) {
-                    return line.substring(0, 1) + line.substring(1).trim();
+        const result: string[] = [];
+        let newLineNum = 0;
+
+        for (const line of lines.slice(contentStart)) {
+            if (line.startsWith('@@')) {
+                // 解析 @@ -a,b +c,d @@ 取得新檔案起始行號 c
+                const match = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+                if (match) {
+                    newLineNum = Number.parseInt(match[1], 10);
                 }
-                return line;
-            })
-            .join('\n');
+                result.push(line);
+            } else if (line.startsWith('+')) {
+                const trimmed = line.substring(1).trim();
+                if (trimmed.length > 0) {
+                    result.push(`+[L${newLineNum}] ${trimmed}`);
+                }
+                newLineNum++;
+            } else if (line.startsWith('-')) {
+                const trimmed = line.substring(1).trim();
+                if (trimmed.length > 0) {
+                    result.push(`-${trimmed}`);
+                }
+                // 刪除行不計入新檔案行號
+            } else if (line.startsWith(' ')) {
+                // Context line（上下文行）：新舊檔案都保留，必須計入新檔案行號
+                newLineNum++;
+            }
+            // 略過 `\ No newline at end of file` 等 metadata 行
+        }
+
+        return result.join('\n');
     }
 
     /**

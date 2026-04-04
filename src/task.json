@@ -11,9 +11,9 @@
     ],
     "author": "Lawrence Shen",
     "version": {
-        "Major": 1,
-        "Minor": 3,
-        "Patch": 25
+        "Major": 2,
+        "Minor": 0,
+        "Patch": 1
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -54,9 +54,9 @@
             "name": "inputOpenAIModelName",
             "type": "string",
             "label": "OpenAI Model Name",
-            "defaultValue": "gpt-4.1-nano",
+            "defaultValue": "gpt-5-mini",
             "required": true,
-            "helpMarkDown": "Enter the OpenAI model name (e.g. gpt-5, gpt-5-mini, gpt-5-nano, gpt-5-mini, gpt-5-mini-mini).",
+            "helpMarkDown": "Enter the OpenAI model name (e.g. gpt-5, gpt-5-mini, gpt-5-nano, gpt-5-mini-mini).",
             "visibleRule": "inputAiProvider == OpenAI"
         },
         {
@@ -118,7 +118,7 @@
             "type": "string",
             "label": "GitHub Copilot Model Name",
             "defaultValue": "gpt-5-mini",
-            "required": true,
+            "required": false,
             "helpMarkDown": "Optional. Defaults to gpt-5-mini.",
             "visibleRule": "inputAiProvider == GitHubCopilot"
         },
@@ -144,19 +144,44 @@
             "name": "inputGitHubCopilotTimeout",
             "type": "string",
             "label": "GitHub Copilot Request Timeout (ms)",
-            "defaultValue": "120000",
+            "defaultValue": "300000",
             "required": false,
-            "helpMarkDown": "Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute).",
+            "helpMarkDown": "Request timeout in milliseconds for GitHub Copilot. Default: 300000 ms (5 minutes).",
             "visibleRule": "inputAiProvider == GitHubCopilot"
+        },
+        {
+            "name": "inputMaxOutputTokens",
+            "type": "string",
+            "label": "Max Output Tokens",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Maximum number of output tokens for the AI model's response."
+        },
+        {
+            "name": "inputTemperature",
+            "type": "string",
+            "label": "Temperature",
+            "defaultValue": "0.2",
+            "required": false,
+            "helpMarkDown": "Temperature setting for the AI model to control randomness in responses."
+        },
+        {
+            "name": "inputResponseLanguage",
+            "type": "string",
+            "label": "Response Language",
+            "defaultValue": "Taiwanese (zh-TW)",
+            "required": true,
+            "helpMarkDown": "Language for AI review responses. Examples: Taiwanese (zh-TW), English (en-US), Japanese (ja-JP), Korean (ko-KR), Simplified Chinese (zh-CN)."
         },
         {
             "name": "inputSystemInstructionSource",
             "type": "pickList",
             "label": "System Instruction Source",
-            "defaultValue": "Inline",
+            "defaultValue": "Built-in",
             "required": true,
-            "helpMarkDown": "Select the source of the system instruction.",
+            "helpMarkDown": "Select the source of the system instruction. 'Built-in' uses the optimized default system prompt with two-pass self-review process.",
             "options": {
+                "Built-in": "Built-in (Default)",
                 "Inline": "Inline",
                 "File": "File"
             }
@@ -178,38 +203,10 @@
                 "rows": "10"
             },
             "label": "System Instruction",
-            "defaultValue": "You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.\n1. Begin with a summary conclusion of the analysis, for example: AI Review Status: 🟢 Recommend Approval, 🔴 Recommend Rejection, 🟡 Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.\n2. Do not include any content unrelated to the code review.\n3. Use Traditional Chinese (zh-TW) for the review result. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].\n4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.\n5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.\n6. Skip analysis of images, binary files, or other non-code files.\n7. Skip analysis of deleted files.\n8. Use Markdown format for the reply.\n9. Assume the provided code snippets are part of a larger, valid codebase. Do not report errors regarding \"unresolved symbols,\" \"missing definitions,\" or \"reference issues\" that may exist outside the provided diff. Focus your analysis strictly on the logic and quality of the changes themselves.",
+            "defaultValue": "You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.\n1. Begin with a summary conclusion of the analysis, for example: AI Review Status: 🟢 Recommend Approval, 🔴 Recommend Rejection, 🟡 Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.\n2. Do not include any content unrelated to the code review.\n3. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].\n4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.\n5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.\n6. Skip analysis of images, binary files, or other non-code files.\n7. Skip analysis of deleted files.\n8. Use Markdown format for the reply.\n9. Assume the provided code snippets are part of a larger, valid codebase. Do not report errors regarding \"unresolved symbols,\" \"missing definitions,\" or \"reference issues\" that may exist outside the provided diff. Focus your analysis strictly on the logic and quality of the changes themselves.",
             "required": false,
             "helpMarkDown": "System-level instructions for the AI model to guide its behavior.",
             "visibleRule": "inputSystemInstructionSource == Inline"
-        },
-        {
-            "name": "inputPromptTemplate",
-            "type": "multiLine",
-            "properties": {
-                "resizable": true,
-                "rows": "5"
-            },
-            "label": "Prompt Template",
-            "defaultValue": "{code_changes}",
-            "required": true,
-            "helpMarkDown": "Custom prompt template for the AI model. Use {code_changes} as a placeholder for the actual code changes."
-        },
-        {
-            "name": "inputMaxOutputTokens",
-            "type": "string",
-            "label": "Max Output Tokens",
-            "defaultValue": "4096",
-            "required": false,
-            "helpMarkDown": "Maximum number of output tokens for the AI model's response."
-        },
-        {
-            "name": "inputTemperature",
-            "type": "string",
-            "label": "Temperature",
-            "defaultValue": "1.0",
-            "required": false,
-            "helpMarkDown": "Temperature setting for the AI model to control randomness in responses."
         },
         {
             "name": "inputFileExtensions",
@@ -228,14 +225,6 @@
             "helpMarkDown": "Comma-separated list of binary file extensions to exclude from the code review analysis. Default includes: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv"
         },
         {
-            "name": "inputShowReviewContent",
-            "type": "boolean",
-            "label": "Show Review Content",
-            "defaultValue": "true",
-            "required": false,
-            "helpMarkDown": "When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes."
-        },
-        {
             "name": "inputEnableThrottleMode",
             "type": "boolean",
             "label": "Enable AI Throttle Mode",
@@ -247,9 +236,44 @@
             "name": "inputEnableIncrementalDiff",
             "type": "boolean",
             "label": "Enable Incremental Diff",
+            "defaultValue": "true",
+            "required": false,
+            "visibleRule": "inputEnableThrottleMode == true",
+            "helpMarkDown": "When enabled, only the latest push changes are reviewed instead of all PR changes. Useful for repeated reviews on iteratively updated PRs. Expected savings: 30-90% of tokens depending on number of pushes. Only effective when \"Enable AI Throttle Mode\" is enabled."
+        },
+        {
+            "name": "inputEnableInlineComments",
+            "type": "boolean",
+            "label": "Enable Inline Comments (Line Annotation)",
+            "defaultValue": "true",
+            "required": false,
+            "helpMarkDown": "When enabled (default), the AI returns structured JSON and comments are posted as inline annotations anchored to specific file lines (Files Changed tab). When disabled, a single summary comment is posted to the PR thread. Note: When this mode is enabled, the system instruction is automatically appended with a JSON-format requirement that overrides the AI output format while preserving language preferences."
+        },
+        {
+            "name": "inputGroupInlineCommentsByFile",
+            "type": "boolean",
+            "label": "Group Inline Comments by File",
             "defaultValue": "false",
             "required": false,
-            "helpMarkDown": "When enabled, only the latest push changes are reviewed instead of all PR changes. Useful for repeated reviews on iteratively updated PRs. Expected savings: 30-90% of tokens depending on number of pushes."
+            "visibleRule": "inputEnableInlineComments == true",
+            "helpMarkDown": "When disabled (default), each issue is posted as a separate inline comment. When enabled, multiple issues in the same file are merged into a single inline comment block."
+        },
+        {
+            "name": "inputInlineStrictMode",
+            "type": "boolean",
+            "label": "Inline Strict Mode (Include Suggestions)",
+            "defaultValue": "false",
+            "required": false,
+            "visibleRule": "inputEnableInlineComments == true",
+            "helpMarkDown": "When disabled (default), the AI only reports critical and warning issues. When enabled, suggestion-level issues are also included for a more thorough review."
+        },
+        {
+            "name": "inputShowReviewContent",
+            "type": "boolean",
+            "label": "Show Review Content (Debug)",
+            "defaultValue": "true",
+            "required": false,
+            "helpMarkDown": "When enabled (default), the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes."
         }
     ],
     "execution": {
