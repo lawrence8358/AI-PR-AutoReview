@@ -1,8 +1,8 @@
 import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
-import * as path from 'path';
-import * as fs from 'fs';
-import { execFileSync } from 'child_process';
+import * as fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { CopilotClient, SessionConfig } from '@github/copilot-sdk';
 
 /**
  * GitHub Copilot AI 服務實作
@@ -15,12 +15,12 @@ import { execFileSync } from 'child_process';
  * 因為 GitHub Copilot 的認證機制與傳統 API Key 不同
  */
 export class GithubCopilotService implements AIService {
-    private githubToken: string;
-    private serverAddress: string;
-    private copilotCliPath: string;
-    private model: string;
-    private timeout: number;
-    private client: any; // CopilotClient 實例，延遲初始化
+    readonly githubToken: string;
+    readonly serverAddress: string;
+    readonly copilotCliPath: string;
+    readonly model: string;
+    readonly timeout: number;
+    private client?: CopilotClient; // CopilotClient 實例，延遲初始化
     private approveAll: any; // SDK approveAll helper，延遲初始化
 
     /**
@@ -59,7 +59,7 @@ export class GithubCopilotService implements AIService {
         // 處理 copilotCliPath：優先使用明確提供的路徑，其次環境變數，最後自動探索
         this.copilotCliPath = (copilotCliPath && copilotCliPath.trim() !== '') ? copilotCliPath.trim()
             : (process.env.COPILOT_CLI_PATH && process.env.COPILOT_CLI_PATH.trim() !== '') ? process.env.COPILOT_CLI_PATH.trim()
-            : '';
+                : '';
 
         this.model = model || 'gpt-5-mini';
         // 處理 timeout：如果提供了值則使用，否則預設 60000 ms
@@ -93,16 +93,16 @@ export class GithubCopilotService implements AIService {
             // 建立 Session（啟用串流模式以提升回應速度）
             const requestOptions = {
                 model: this.model,
-                streaming: true, // 啟用串流模式
+                // streaming: true, // 啟用串流模式
                 systemMessage: {
                     content: systemInstruction
                 },
                 onPermissionRequest: this.approveAll,
                 // Note: SDK 不直接支援 temperature 和 maxTokens 參數
                 // 這些參數可能需要透過 provider config 或其他方式設定
-            };
+            } as SessionConfig;
             console.log('🚀 Creating Copilot session with options:', requestOptions);
-            const session = await this.client.createSession(requestOptions);
+            const session = await this.client?.createSession(requestOptions);
 
             // 準備接收串流內容
             let content = '';
@@ -110,7 +110,7 @@ export class GithubCopilotService implements AIService {
             let finalResponse: any = null;
 
             // 監聽串流事件，即時接收內容
-            session.on('assistant.message_delta', (event: any) => {
+            session?.on('assistant.message_delta', (event: any) => {
                 const deltaContent = event.data?.deltaContent || '';
                 if (deltaContent) {
                     if (isFirstChunk) {
@@ -127,14 +127,14 @@ export class GithubCopilotService implements AIService {
             });
 
             // 監聽完整訊息事件（用於獲取 token usage）
-            session.on('assistant.message', (event: any) => {
+            session?.on('assistant.message', (event: any) => {
                 finalResponse = event;
             });
 
             // 發送 Prompt 並等待回應完成
             const startTime = Date.now();
             console.log(`⏳ Sending request to GitHub Copilot (timeout: ${this.timeout}ms)...`);
-            const response = await session.sendAndWait({
+            const response = await session?.sendAndWait({
                 prompt
             }, this.timeout);
             const endTime = Date.now();
@@ -143,7 +143,7 @@ export class GithubCopilotService implements AIService {
 
             // 如果沒有收到串流內容，從最終回應中提取
             if (!content) {
-                console.warn('⚠️ No streaming content received, extracting from final response');
+                // console.warn('⚠️ No streaming content received, extracting from final response');
                 content = response?.data?.content || finalResponse?.data?.content || 'No response generated';
             }
 
@@ -151,7 +151,7 @@ export class GithubCopilotService implements AIService {
             const tokenUsage = this.extractTokenUsage(finalResponse || response) || this.estimateTokenUsage({ data: { content } });
 
             // 清理 session
-            await session.destroy();
+            await session?.disconnect();
 
             // 如果啟用顯示審核內容，印出回應資訊
             if (config?.showReviewContent) {
@@ -187,8 +187,10 @@ export class GithubCopilotService implements AIService {
             }
 
         } finally {
-            await this.client.stop();
-            this.client = null;
+            if (this.client) {
+                await this.client.stop();
+                this.client = undefined;
+            }
         }
     }
 
@@ -206,6 +208,7 @@ export class GithubCopilotService implements AIService {
             // 動態引入 GitHub Copilot SDK
             const { CopilotClient, approveAll } = await import('@github/copilot-sdk');
             this.approveAll = approveAll;
+            const logLevel = 'debug'; // 可根據需要調整日誌級別（debug, info, warn, error）
 
             // 根據參數組合決定連接模式
             if (this.githubToken) {
@@ -213,6 +216,7 @@ export class GithubCopilotService implements AIService {
                 const resolvedCliPath = this.resolveCopilotCliPath();
                 console.log(`📍 Using Copilot CLI at: ${resolvedCliPath}`);
                 this.client = new CopilotClient({
+                    logLevel: logLevel,
                     githubToken: this.githubToken,
                     useLoggedInUser: false,
                     cliPath: resolvedCliPath,
@@ -221,6 +225,7 @@ export class GithubCopilotService implements AIService {
             } else if (this.serverAddress) {
                 // 遠端 CLI Server 模式：連接到指定的 CLI Server
                 this.client = new CopilotClient({
+                    logLevel: logLevel,
                     cliUrl: this.serverAddress,
                 });
                 console.log(`✅ Connected to GitHub Copilot CLI Server at ${this.serverAddress}`);
@@ -229,6 +234,7 @@ export class GithubCopilotService implements AIService {
                 const resolvedCliPath = this.resolveCopilotCliPath();
                 console.log(`📍 Using Copilot CLI at: ${resolvedCliPath}`);
                 this.client = new CopilotClient({
+                    logLevel: logLevel,
                     cliPath: resolvedCliPath,
                 });
                 console.log(`✅ Connected to GitHub Copilot CLI (local agent)`);

@@ -43,6 +43,27 @@ export interface DevOpsService {
     ): Promise<number>;
 
     /**
+     * 新增 Pull Request 行內評論（精準行號標註）
+     * @param projectName - 專案名稱
+     * @param repositoryId - Repository ID 或 owner/repo
+     * @param pullRequestId - Pull Request ID
+     * @param filePath - 檔案路徑（以 / 開頭，例如 /src/index.ts）
+     * @param lineStart - 起始行號（1-based）
+     * @param lineEnd - 結束行號（1-based，單行與 lineStart 相同）
+     * @param content - 評論內容
+     * @returns 評論的 ID
+     */
+    addInlinePullRequestComment(
+        projectName: string,
+        repositoryId: string,
+        pullRequestId: number,
+        filePath: string,
+        lineStart: number,
+        lineEnd: number,
+        content: string
+    ): Promise<number>;
+
+    /**
      * 取得 Pull Request 變更的檔案內容
      * @param projectName - 專案名稱（對 GitHub 可能不使用）
      * @param repositoryId - Repository ID 或 owner/repo

@@ -18,10 +18,10 @@ export interface PipelineInputs {
     copilotCliPath?: string;
     /** 系統指令 */
     systemInstruction: string;
-    /** 提示詞範本 */
-    promptTemplate: string;
+    /** 回應語言 (例如 'Taiwanese (zh-TW)') */
+    responseLanguage: string;
     /** 最大輸出 token 數 */
-    maxOutputTokens: number;
+    maxOutputTokens?: number;
     /** 溫度值 (隨機性) */
     temperature: number;
     /** 要包含的檔案副檔名列表 */
@@ -30,10 +30,16 @@ export interface PipelineInputs {
     binaryExtensions: string[];
     /** 啟用 AI 節流模式（預設 true，僅送差異；false 則送整個檔案） */
     enableThrottleMode: boolean;
-    /** 顯示審核內容（預設 false，不顯示；true 則 print 出送給 AI 以及回應的內容） */
+    /** 顯示審核內容（預設 true，print 出送給 AI 以及回應的內容；false 則不顯示） */
     showReviewContent: boolean;
     /** 啟用增量 Diff 模式（預設 false，檢查所有 PR 變更；true 則僅檢查最後一次推送的變更） */
     enableIncrementalDiff: boolean;
+    /** 啟用行內評論模式（預設 true，發精準行號標註的行內評論；false 則發單一總結評論） */
+    enableInlineComments: boolean;
+    /** 合併同一檔案的行內評論為單一區塊（預設 false） */
+    groupInlineCommentsByFile: boolean;
+    /** 嚴厲模式：true 時 AI 額外回報 suggestion 級別問題（預設 false，僅回報 critical / warning） */
+    inlineStrictMode: boolean;
 }
 
 /**

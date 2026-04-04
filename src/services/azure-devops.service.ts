@@ -177,6 +177,76 @@ export class AzureDevOpsService extends BaseDevOpsService {
         return changeDetails;
     }
 
+    /**
+     * 新增 Pull Request 行內評論（精準行號標註）
+     * @param projectName - 專案 ID
+     * @param repositoryId - Repository ID
+     * @param pullRequestId - Pull Request ID
+     * @param filePath - 檔案路徑（以 / 開頭）
+     * @param lineStart - 起始行號（1-based）
+     * @param lineEnd - 結束行號（1-based）
+     * @param content - 評論內容
+     * @returns 評論的 Thread ID
+     */
+    public async addInlinePullRequestComment(
+        projectName: string,
+        repositoryId: string,
+        pullRequestId: number,
+        filePath: string,
+        lineStart: number,
+        lineEnd: number,
+        content: string
+    ): Promise<number> {
+        const gitApi = await this.getGitApi();
+
+        // 取得 PR iterations 以建立正確的 iterationContext
+        const iterations = await gitApi.getPullRequestIterations(repositoryId, pullRequestId, projectName);
+        if (!iterations || iterations.length === 0) {
+            throw new Error('⛔ Unable to get PR iterations for inline comment');
+        }
+
+        const latestIterationId = iterations[iterations.length - 1].id!;
+
+        // 確保檔案路徑以 / 開頭
+        const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
+
+        try {
+            const thread = await gitApi.createThread(
+                {
+                    comments: [{
+                        parentCommentId: 0,
+                        content: content,
+                        commentType: 1 // CommentType.text = 1
+                    }],
+                    status: 1, // CommentThreadStatus.active = 1
+                    threadContext: {
+                        filePath: normalizedPath,
+                        rightFileStart: { line: lineStart, offset: 1 },
+                        rightFileEnd: { line: lineEnd, offset: 1024 }
+                    },
+                    pullRequestThreadContext: {
+                        iterationContext: {
+                            firstComparingIteration: 1,
+                            secondComparingIteration: latestIterationId
+                        }
+                    }
+                },
+                repositoryId,
+                pullRequestId,
+                projectName
+            );
+
+            if (!thread || !thread.id) {
+                throw new Error('⛔ Failed to create inline comment thread');
+            }
+
+            return thread.id;
+        } catch (error) {
+            console.error(`⛔ Error adding inline comment to ${normalizedPath}:${lineStart}`, error);
+            throw error;
+        }
+    }
+
     //#region Private Methods
 
     /**
@@ -318,48 +388,6 @@ export class AzureDevOpsService extends BaseDevOpsService {
             ...currentChanges,
             changeEntries: incrementalEntries
         };
-    }
-
-    /**
-     * 從差異內容中提取只包含新增和修改的行
-     * @param diffContent - 完整的 diff 內容
-     * @returns 只包含新增和修改行的 diff
-     */
-    private extractIncrementalDiffLines(diffContent: string): string {
-        if (!diffContent) return '';
-
-        const lines = diffContent.split('\n');
-        const incrementalLines: string[] = [];
-        let currentSection = '';
-
-        for (const line of lines) {
-            // 保留 diff header 行
-            if (line.startsWith('diff --git') ||
-                line.startsWith('index ') ||
-                line.startsWith('---') ||
-                line.startsWith('+++') ||
-                line.startsWith('@@')) {
-                incrementalLines.push(line);
-                currentSection = line;
-            }
-            // 保留新增行（+開頭，但不是 +++）
-            else if (line.startsWith('+') && !line.startsWith('+++')) {
-                incrementalLines.push(line);
-            }
-            // 保留修改行前後的上下文（-開頭的舊行，但不是 ---）
-            else if (line.startsWith('-') && !line.startsWith('---')) {
-                incrementalLines.push(line);
-            }
-            // 保留一些上下文行（空行或普通行，用於理解修改的上下文）
-            else if (line.startsWith(' ') || line === '') {
-                // 只在有新增或修改行附近時才保留上下文
-                if (incrementalLines.length > 0) {
-                    incrementalLines.push(line);
-                }
-            }
-        }
-
-        return incrementalLines.join('\n');
     }
 
     /**

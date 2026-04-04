@@ -1,29 +1,20 @@
-// import tl = require('azure-pipelines-task-lib/task');
 import * as tl from 'azure-pipelines-task-lib/task';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { PipelineInputs, DevOpsConnection } from './interfaces/pipeline-inputs.interface';
 import { AIProviderService } from './services/ai-provider.service';
 import { DevOpsProviderService } from './services/devops-provider.service';
 import { DevOpsService } from './interfaces/devops-service.interface';
-import { AI_PROVIDERS, DEFAULT_MODELS, API_KEY_ENV_MAP, TASK_INPUT_CONFIG_MAP } from './constants';
-
-
-const DEFAULT_SYSTEM_INSTRUCTION = `You are a senior software engineer. Please help complete the PR code review and respond according to the following instructions.
-1. Begin with a summary conclusion of the analysis, for example: AI Review Status: 🟢 Recommend Approval, 🔴 Recommend Rejection, 🟡 Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.
-2. Do not include any content unrelated to the code review.
-3. Use English (en-US) for the review result. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].
-4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.
-5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.
-6. Skip analysis of images, binary files, or other non-code files.
-7. Skip analysis of deleted files.
-8. Use Markdown format for the reply.
-9. Assume the provided code snippets are part of a larger, valid codebase. Do not report errors regarding "unresolved symbols," "missing definitions," or "reference issues" that may exist outside the provided diff. Focus your analysis strictly on the logic and quality of the changes themselves.`;
+import { parseInlineReviewResult, addInlineReviewComments } from './services/inline-review.service';
+import {
+    AI_PROVIDERS, DEFAULT_MODELS, API_KEY_ENV_MAP,
+    TASK_INPUT_CONFIG_MAP, buildInlineJsonAppend, DEFAULT_SYSTEM_INSTRUCTION
+} from './constants';
 
 const ALLOWED_FILE_EXTENSIONS = ['.md', '.txt', '.json', '.yaml', '.yml', '.xml', '.html'];
 
 export class Main {
-    private isDebugMode: boolean;
+    readonly isDebugMode: boolean;
 
     constructor(isDebugMode: boolean = false) {
         this.isDebugMode = isDebugMode;
@@ -69,7 +60,13 @@ export class Main {
      * @param inlineInstruction - inline 指令內容
      * @returns 最終的系統指令
      */
-    private getSystemInstruction(source: string, filePath: string, inlineInstruction: string): string {
+    private getSystemInstruction(source: string, filePath: string, inlineInstruction: string, responseLanguage: string): string {
+        // Built-in 模式：直接使用內建 SystemPrompt，忽略 file 和 inline 設定
+        if (source === 'Built-in') {
+            console.log('📋 Using built-in system instruction (two-pass self-review process)');
+            return `[Response Language: ${responseLanguage}]\n\n` + DEFAULT_SYSTEM_INSTRUCTION;
+        }
+
         let instruction = '';
 
         if (source === 'File') {
@@ -86,10 +83,10 @@ export class Main {
         // 最終檢查：如果仍然為空，使用預設指令
         if (!instruction || instruction.trim().length === 0) {
             console.warn(`⚠️ System prompt (inline or file fallback) is empty. Using default instruction.`);
-            return DEFAULT_SYSTEM_INSTRUCTION;
+            instruction = DEFAULT_SYSTEM_INSTRUCTION;
         }
 
-        return instruction;
+        return `[Response Language: ${responseLanguage}]\n\n` + instruction;
     }
 
     /**
@@ -170,26 +167,35 @@ export class Main {
             }
         }
 
-        // 取得系統指令
-        const systemInstructionSource = this.getInputValue('SystemInstructionSource', 'inputSystemInstructionSource', false, 'Inline');
-        const systemPromptFile = this.getInputValue('SystemPromptFile', 'inputSystemPromptFile', false, '');
-        const inlineInstruction = this.getInputValue('SystemInstruction', 'inputSystemInstruction', false, '');
-        const systemInstruction = this.getSystemInstruction(systemInstructionSource, systemPromptFile, inlineInstruction);
-
         // 取得其他參數
-        const promptTemplate = this.getInputValue('PromptTemplate', 'inputPromptTemplate', true, '{code_changes}');
-        const maxOutputTokens = parseInt(this.getInputValue('MaxOutputTokens', 'inputMaxOutputTokens', false, '4096'));
-        const temperature = parseFloat(this.getInputValue('Temperature', 'inputTemperature', false, '1.0'));
+        const maxOutputTokensRaw = this.getInputValue('MaxOutputTokens', 'inputMaxOutputTokens', false);
+        const maxOutputTokensParsed = parseInt(maxOutputTokensRaw, 10);
+        const maxOutputTokens = !isNaN(maxOutputTokensParsed) && maxOutputTokensParsed > 0 ? maxOutputTokensParsed : undefined;
+        const temperature = Math.max(0, Math.min(2, parseFloat(this.getInputValue('Temperature', 'inputTemperature', false, '0.2'))));
         const fileExtensionsStr = this.getInputValue('FileExtensions', 'inputFileExtensions', false, '');
         const binaryExtensionsStr = this.getInputValue('BinaryExtensions', 'inputBinaryExtensions', false, '');
         const enableThrottleMode = this.getInputValue('EnableThrottleMode', 'inputEnableThrottleMode', false, 'true').toLowerCase() === 'true';
-        const showReviewContent = this.getInputValue('ShowReviewContent', 'inputShowReviewContent', false, 'false').toLowerCase() === 'true';
-        const enableIncrementalDiff = this.getInputValue('EnableIncrementalDiff', 'inputEnableIncrementalDiff', false, 'false').toLowerCase() === 'true';
-        
+        const showReviewContent = this.getInputValue('ShowReviewContent', 'inputShowReviewContent', false, 'true').toLowerCase() === 'true';
+        const enableIncrementalDiff = this.getInputValue('EnableIncrementalDiff', 'inputEnableIncrementalDiff', false, 'true').toLowerCase() === 'true';
+        const enableInlineComments = this.getInputValue('EnableInlineComments', 'inputEnableInlineComments', false, 'true').toLowerCase() === 'true';
+        const groupInlineCommentsByFile = this.getInputValue('GroupInlineCommentsByFile', 'inputGroupInlineCommentsByFile', false, 'false').toLowerCase() === 'true';
+        const inlineStrictMode = this.getInputValue('InlineStrictMode', 'inputInlineStrictMode', false, 'false').toLowerCase() === 'true';
+
+        // 取得系統指令（inline 與一般模式相同來源，inline 模式額外附加 JSON 格式需求）
+        const responseLanguage = this.getInputValue('ResponseLanguage', 'inputResponseLanguage', true, 'Taiwanese (zh-TW)');
+        const systemInstructionSource = this.getInputValue('SystemInstructionSource', 'inputSystemInstructionSource', false, 'Built-in');
+        const systemPromptFile = this.getInputValue('SystemPromptFile', 'inputSystemPromptFile', false, '');
+        const inlineInstruction = this.getInputValue('SystemInstruction', 'inputSystemInstruction', false, '').trim();
+        let systemInstruction = this.getSystemInstruction(systemInstructionSource, systemPromptFile, inlineInstruction, responseLanguage);
+        if (enableInlineComments) {
+            systemInstruction += buildInlineJsonAppend(inlineStrictMode);
+            console.log(`📝 Inline comment mode: JSON format requirement appended (strictMode=${inlineStrictMode})`);
+        }
+
         // 取得 GitHub Copilot Timeout (僅當 AI Provider 為 GitHubCopilot 時)
         let timeout: number | undefined = undefined;
         if (inputAiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
-            const timeoutStr = this.getInputValue('GitHubCopilotTimeout', 'inputGitHubCopilotTimeout', false, '120000');
+            const timeoutStr = this.getInputValue('GitHubCopilotTimeout', 'inputGitHubCopilotTimeout', false, '300000');
             if (timeoutStr && timeoutStr.trim() !== '') {
                 const parsedTimeout = parseInt(timeoutStr);
                 timeout = isNaN(parsedTimeout) ? undefined : parsedTimeout;
@@ -214,14 +220,17 @@ export class Main {
             copilotCliPath,
             timeout,
             systemInstruction,
-            promptTemplate,
+            responseLanguage,
             maxOutputTokens,
             temperature,
             fileExtensions,
             binaryExtensions,
             enableThrottleMode,
             showReviewContent,
-            enableIncrementalDiff
+            enableIncrementalDiff,
+            enableInlineComments,
+            groupInlineCommentsByFile,
+            inlineStrictMode
         };
     }
 
@@ -369,8 +378,7 @@ export class Main {
             .map(change => `\n## File: ${change.path}\n\`\`\`\n${change.content}\n\`\`\``)
             .join('\n');
 
-        // 替換提示詞範本中的佔位符
-        const prompt = inputs.promptTemplate.replace('{code_changes}', codeChanges);
+        const prompt = codeChanges;
 
         // 呼叫 AI 服務
         const aiResponse = await aiService.generateComment(
@@ -400,14 +408,14 @@ export class Main {
      * 將建議內容新增為 PR 的評論
      * @param devOpsService - DevOps 服務實例
      * @param connection - Azure DevOps 連線資訊
-     * @param reviewContent - AI 分析結果內容  
+     * @param reviewContent - AI 分析結果內容
      * @param providerName - AI 提供者名稱
      * @param aiModelName - 使用的 AI 模型名稱
      */
     async addReviewComment(
         devOpsService: DevOpsService,
         connection: DevOpsConnection,
-        reviewContent: string,  
+        reviewContent: string,
         providerName: string,
         aiModelName: string
     ) {
@@ -420,6 +428,7 @@ export class Main {
             commentHeader
         );
     }
+
 }
 
 /**
@@ -455,7 +464,7 @@ async function run() {
             copilotCliPath: inputs.copilotCliPath
         };
         aiProvider.registerService(inputs.aiProvider, config);
-        
+
         const devOpsProvider = new DevOpsProviderService();
         const provider = DevOpsProviderService.detectProvider(connection.collectionUri);
         devOpsProvider.registerService(provider, {
@@ -475,14 +484,32 @@ async function run() {
         // 4. 生成 AI 分析
         const reviewResult = await main.generateAIReview(aiProvider, inputs, changes);
 
-        // 5. 新增評論
-        await main.addReviewComment(
-            devOpsService, 
-            connection, 
-            reviewResult.content, 
-            inputs.aiProvider,     
-            inputs.modelName
-        );
+        // 5. 發佈評論（summary 模式 或 inline 行內標註模式）
+        if (inputs.enableInlineComments) {
+            console.log('📌 Inline comment mode: parsing JSON response...');
+            const inlineResult = parseInlineReviewResult(reviewResult.content);
+            if (inlineResult) {
+                // Auto-correct inconsistent status: if no issues found, status should always be Recommend Approval
+                if (inlineResult.issues.length === 0 && inlineResult.summary.status !== '🟢 Recommend Approval') {
+                    console.warn(`⚠️ Auto-correcting status: issues array is empty but status was "${inlineResult.summary.status}". Changing to "🟢 Recommend Approval".`);
+                    inlineResult.summary.status = '🟢 Recommend Approval';
+                }
+                await addInlineReviewComments(
+                    devOpsService,
+                    connection,
+                    inlineResult,
+                    inputs.aiProvider,
+                    inputs.modelName,
+                    inputs.groupInlineCommentsByFile,
+                    inputs.inlineStrictMode
+                );
+            } else {
+                console.warn('⚠️ Failed to parse inline review JSON. Falling back to summary comment.');
+                await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
+            }
+        } else {
+            await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
+        }
         console.log('🎉 AI Pull Request Code Review completed successfully!');
         tl.setResult(tl.TaskResult.Succeeded, 'AI Code Review completed successfully');
         process.exit();

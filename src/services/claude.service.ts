@@ -57,9 +57,12 @@ export class ClaudeService extends BaseHttpAIService {
             model: this.model,
             messages: [
                 { role: 'user', content: prompt }
-            ],
-            max_tokens: config?.maxOutputTokens || 4096
+            ]
         };
+
+        if (config?.maxOutputTokens !== undefined) {
+            requestBody.max_tokens = config.maxOutputTokens;
+        }
 
         if (systemInstruction && systemInstruction.trim() !== '') {
             requestBody.system = systemInstruction;

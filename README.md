@@ -19,8 +19,9 @@ This is an Azure DevOps Pipeline extension that leverages the power of Large Lan
 + **Universal AI Support**: Seamlessly switch between Google Gemini, OpenAI, Grok, Claude, and GitHub Copilot based on your needs.
 + **GitHub Copilot Integration**: Connect to GitHub Copilot CLI to perform reviews using your existing subscription (Individual, Business, or Enterprise), ensuring data privacy and cost-efficiency.
 + **Direct Feedback**: Publishes AI review suggestions directly to the PR as comments, threading into the conversation.
-+ **Highly Customizable**: Tailor the System Prompts (Inline or File-based), adjust creativity (Temperature), and control token usage.
++ **Highly Customizable**: Tailor the System Prompts (Built-in, Inline, or File-based), adjust creativity (Temperature), and control token usage.
 + **Smart Filtering**: configure included/excluded file extensions to focus the review on what matters.
++ **Precise Line Annotation (Inline Comments)**: AI comments are anchored to specific changed lines in the Files Changed tab, making it easier to pinpoint code issues.
 
 
 ## Installation
@@ -153,7 +154,7 @@ When a pipeline's source code is hosted on **GitHub**, the Azure DevOps built-in
 
    Generate a new token and select the appropriate scope based on your repository type:
 
-   ![Classic Token Permission Settings](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/screenshots/CI7.png)
+   ![Classic Token Permission Settings](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/screenshots/CI7.png)
 
    - **Public repositories**: Check `public_repo` — Access public repositories (grants read/write access to public repos, including PR comments)
    - **Private repositories**: Check `repo` — Full control of private repositories (the entire `repo` scope must be selected; selecting only sub-scopes like `public_repo` or `repo:status` is **not sufficient** for private repos)
@@ -215,13 +216,15 @@ To ensure all code is code-reviewed, we recommend configuring branch policies to
 
 ## 📋 Task input parameters explained
 Below are all input parameters supported by this Task:
+
+For detailed review mode parameter combinations, see [PARAMETER-COMBINATIONS.md](https://raw.githubusercontent.com/lawrence8358/AI-PR-AutoReview/main/PARAMETER-COMBINATIONS.md).
   
 | Label | Type | Required | Default | Description |
 |---|---:|:---:|---|---|
 | AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot. |
-| AI Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
+| Gemini Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
 | Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
-| OpenAI Model Name | string | Conditional | gpt-5-mini | Enter the OpenAI model name (e.g., gpt-5-mini, gpt-5-mini-mini). Required when AI Provider is OpenAI. |
+| OpenAI Model Name | string | Conditional | gpt-5-mini | Enter the OpenAI model name (e.g., gpt-5-mini). Required when AI Provider is OpenAI. |
 | OpenAI API Key | string | Conditional | (empty) | Enter your OpenAI API Key. Required when AI Provider is OpenAI. |
 | Grok Model Name | string | Conditional | grok-3-mini | Enter the Grok model name (e.g., grok-3-mini). Required when AI Provider is Grok. |
 | Grok (xAI) API Key | string | Conditional | (empty) | Enter your Grok (xAI) API Key. Required when AI Provider is Grok. |
@@ -230,18 +233,22 @@ Below are all input parameters supported by this Task:
 | **GitHub Copilot Token** | string | No | (empty) | **(Optional) GitHub Fine-grained Personal Access Token** (format: `github_pat_xxx`) for authenticating with GitHub Copilot service. Get from GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens. **Required permissions**: Account permissions → Copilot Requests → Access: Read-only. **Note**: Classic tokens (`ghp_`) are not supported. **Cannot be used together with CLI Server Address**. Visible when GitHub Copilot is selected. |
 | GitHub Copilot CLI Server Address | string | No | (empty) | (Optional) Enter GitHub Copilot CLI Server address (IP or Domain + Port). Example: 192.168.1.100:8080 or copilot.internal.company.com:8080. If not provided and no Token is provided, will use GitHub Copilot CLI in Build Agent. **Cannot be used together with GitHub Token**. Visible when GitHub Copilot is selected. |
 | GitHub Copilot Model Name | string | No | gpt-5-mini | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-5-mini. Visible when GitHub Copilot is selected. |
-| GitHub Copilot Request Timeout (ms) | string | No | 120000 | Request timeout in milliseconds for GitHub Copilot. Default: 120000 ms (2 minutes). If left empty, defaults to 60000 ms (1 minute). Visible when GitHub Copilot is selected. |
-| System Instruction Source | pickList | Yes | Inline | Select the source of the system instruction. Options: Inline, File. |
+| GitHub Copilot Request Timeout (ms) | string | No | 300000 | Request timeout in milliseconds for GitHub Copilot. Default: 300000 ms (5 minutes). Visible when GitHub Copilot is selected. |
+| GitHub Copilot CLI Path | string | No | (empty) | (Optional) Absolute path to the Copilot CLI executable on the build agent. Example (Windows): `C:\Tools\copilot\copilot.exe`. If empty, falls back to environment variable `COPILOT_CLI_PATH`, then system PATH. Visible when GitHub Copilot is selected. |
+| System Instruction Source | pickList | Yes | Built-in | Select the source of the system instruction. Options: Built-in (uses a built-in optimized code review prompt), Inline, File. |
 | System Prompt File | string | No | (empty) | Path to the system prompt file. Supported formats: .md, .txt, .json, .yaml, .yml, .xml, .html. Optional. If the file is not found or empty, falls back to inline instruction. |
 | System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. Used when System Instruction Source is 'Inline'. Optional. If empty, a default code review instruction will be used automatically. |
-| Prompt Template | multiLine | Yes | {code_changes} | Custom prompt template for the AI model. `{code_changes}` will be replaced with the actual code changes. |
-| Max Output Tokens | string | No | 4096 | Maximum output token count for the AI model's response. |
-| Temperature | string | No | 1.0 | Temperature setting for the AI model, controlling randomness. |
+| Response Language | string | Yes | Taiwanese (zh-TW) | Language for AI review responses. Examples: `Taiwanese (zh-TW)`, `English (en-US)`, `Japanese (ja-JP)`, `Korean (ko-KR)`, `Simplified Chinese (zh-CN)`. |
+| Max Output Tokens | string | No | (unset) | Maximum output token count for the AI model's response. Leave empty to use the model's default limit. |
+| Temperature | string | No | 0.2 | Temperature setting for the AI model, controlling randomness. |
 | File Extensions to Include | string | No | (empty) | Comma-separated list of file extensions to include in the Code Review analysis. If empty, all non-binary files are included by default. |
 | Binary File Extensions to Exclude | string | No | (empty) | Comma-separated list of binary file extensions to exclude from the Code Review analysis. If left empty, the task will automatically exclude common binary file types by default (for example: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .md, .markdown, .txt, .gitignore). If you provide a value, your list will be used instead of these defaults. |
-| Enable AI Throttle Mode | boolean | No | true | When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review. **Note**: When this option is disabled, "Enable Incremental Diff Mode" will have no effect. |
-| Enable Incremental Diff Mode | boolean | No | false | When enabled, only the changes from the latest push (most recent iteration) are reviewed. When disabled, all PR changes from all iterations are reviewed. **Important**: This option only takes effect when "Enable AI Throttle Mode" is enabled. When throttle mode is disabled, this setting is ignored. |
-| Show Review Content | boolean | No | false | When enabled, the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes. |
+| Enable AI Throttle Mode | boolean | No | true | When enabled (default), only code differences are sent to AI for review. When disabled, the entire new file content is sent to AI for review. |
+| Enable Incremental Diff Mode | boolean | No | true | When enabled, only the changes from the latest push (most recent iteration) are reviewed. When disabled, all PR changes from all iterations are reviewed. **Only effective when "Enable AI Throttle Mode" is enabled** (hidden in UI when throttle mode is off). **Note (Azure DevOps)**: filters the reviewed file list to only the latest push's files. **Note**: `enableIncrementalDiff` is only effective on Azure DevOps. On GitHub, this setting has no effect as the GitHub API always returns all PR files. |
+| Enable Inline Comments (Line Annotation) | boolean | No | true | When enabled (default), the AI returns structured JSON and comments are posted as inline annotations anchored to specific file lines (Files Changed tab). When disabled, a single summary comment is posted to the PR thread. **Note**: When this mode is enabled, the system instruction is automatically appended with a JSON-format requirement that overrides the AI output format while preserving language preferences. |
+| Group Inline Comments by File | boolean | No | false | When disabled (default), each issue is posted as a separate inline comment. When enabled, multiple issues in the same file are merged into a single inline comment block. Only visible and applicable when **Enable Inline Comments** is enabled. |
+| Inline Strict Mode (Include Suggestions) | boolean | No | false | When disabled (default), the AI only reports critical and warning issues. When enabled, suggestion-level issues are also included for a more thorough review. Only visible and applicable when **Enable Inline Comments** is enabled. |
+| Show Review Content | boolean | No | true | When enabled (default), the code changes, system instruction, prompt, and AI response will be printed to the console for debugging purposes. |
 
 
 ## 🎉 Result display
