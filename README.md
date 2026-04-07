@@ -51,9 +51,9 @@ The extension automatically detects which mode to use based on the parameters yo
 
 | Mode | Use Case | Parameters | Prerequisites |
 |------|----------|------------|---------------|
-| **Token Mode** | Cloud CI (Azure Pipelines Hosted Agents) | Provide **GitHub Token** only | • GitHub Copilot subscription<br>• Fine-grained Personal Access Token with Copilot Read permission<br>• **CI Token Mode**: Run `npm install -g @github/copilot@10.9.4` in CI before this task ([Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)) |
-| **Remote CLI Server** | Centralized architecture | Provide **CLI Server Address** only | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed (`npm install -g @github/copilot`)<br>• Completed authentication (`copilot auth login`)<br>• Network connectivity between Agent and Server |
-| **Local CLI** | On-premise CI with pre-configured agents | Don't provide Token or Server Address | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed on Build Agent (`npm install -g @github/copilot`)<br>• Completed authentication via `copilot auth login` |
+| **Token Mode** | Cloud CI (Azure Pipelines Hosted Agents) | Provide **GitHub Token** only | • GitHub Copilot subscription<br>• Fine-grained Personal Access Token with Copilot Read permission<br>• CLI is **auto-installed** by the task at runtime |
+| **Remote CLI Server** | Centralized architecture | Provide **CLI Server Address** only | • GitHub Copilot subscription<br>• GitHub Copilot CLI installed on the server (`npm install -g @github/copilot`)<br>• Completed authentication (`copilot auth login`)<br>• Network connectivity between Agent and Server |
+| **Local CLI** | On-premise CI with pre-configured agents | Don't provide Token or Server Address | • GitHub Copilot subscription<br>• Completed authentication on Build Agent via `copilot auth login`<br>• CLI is **auto-installed** by the task at runtime |
 
 **Important**: GitHub Token and CLI Server Address **cannot be used together**. Choose one authentication method only.
 
@@ -72,16 +72,7 @@ The extension automatically detects which mode to use based on the parameters yo
 
    In Azure DevOps Pipeline, add the token as a secret variable to prevent exposure in logs.
 
-3. **Configure CI Pipeline (Token Mode)**
-
-   **Important for CI Token Mode**: Before using this task, install GitHub Copilot CLI:
-   ```yaml
-   - script: npm install -g @github/copilot
-     displayName: 'Install GitHub Copilot CLI'
-   ```
-   Reference: [GitHub Copilot CLI Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
-
-4. **Configure Pipeline Task**
+3. **Configure Pipeline Task**
    - **AI Provider**: Select `GitHub Copilot`
    - **GitHub Copilot Token**: Enter your Fine-grained Personal Access Token (or use secret variable)
    - **CLI Server Address**: Leave empty
@@ -89,14 +80,15 @@ The extension automatically detects which mode to use based on the parameters yo
 
 #### Remote CLI Server & Local CLI Mode Setup
 
-Both Remote CLI Server and Local CLI modes require the same initial setup:
+**For Remote CLI Server Mode**, the CLI must be installed and authenticated on the server:
 
-1. **Install GitHub Copilot CLI**
+1. **Install GitHub Copilot CLI** (on the server)
    ```bash
    npm install -g @github/copilot
    ```
+   Reference: [GitHub Copilot CLI Installation Guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
 
-2. **Authenticate with GitHub**
+2. **Authenticate with GitHub** (on the server)
    ```bash
    copilot auth login
    ```
@@ -116,9 +108,14 @@ Both Remote CLI Server and Local CLI modes require the same initial setup:
    - **CLI Server Address**: Enter `your-server-ip:8080` or `your-domain:8080`
    - **Model Name**: (Optional) Defaults to `gpt-5-mini`
 
-**For Local CLI Mode:**
+**For Local CLI Mode**, the task automatically installs the CLI. You only need to pre-authenticate on the Build Agent:
 
-3. **Configure Pipeline Task**
+1. **Authenticate with GitHub** (on the Build Agent, one-time setup)
+   ```bash
+   npx @github/copilot auth login
+   ```
+
+2. **Configure Pipeline Task**
    - **AI Provider**: Select `GitHub Copilot`
    - **GitHub Copilot Token**: Leave empty
    - **CLI Server Address**: Leave empty

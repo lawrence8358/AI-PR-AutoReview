@@ -1,7 +1,8 @@
 import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
 import * as fs from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import * as path from 'node:path';
+import { execSync } from 'node:child_process';
 import { CopilotClient, SessionConfig } from '@github/copilot-sdk';
 
 /**
@@ -232,7 +233,7 @@ export class GithubCopilotService implements AIService {
             } else {
                 // 本機 CLI 模式：使用 Build Agent 預先設定的授權
                 const resolvedCliPath = this.resolveCopilotCliPath();
-                console.log(`📍 Using Copilot CLI at: ${resolvedCliPath}`);
+                console.log(`📍 Using Copilot CLI at: ${resolvedCliPath}`);                
                 this.client = new CopilotClient({
                     logLevel: logLevel,
                     cliPath: resolvedCliPath,
@@ -261,52 +262,161 @@ export class GithubCopilotService implements AIService {
     }
 
     /**
-     * 解析 Copilot CLI 路徑
-     * 優先順序：明確指定 → 環境變數 → 平台專屬二進位檔 → 系統 PATH → 拋出錯誤
+     * 確保 @github/copilot CLI 已安裝並取得其 JS 入口點路徑
+     * 優先順序：
+     * 1. 使用者明確指定路徑（跳過自動安裝）
+     * 2. 自動安裝/更新 @github/copilot，並解析全域 npm JS 入口點
      *
-     * 注意：此方法不會回傳 undefined。在 esbuild CJS bundle 環境中，SDK 內部的
-     * getBundledCliPath() 會使用 import.meta.resolve() 導致 crash，因此必須始終
-     * 提供 cliPath 來短路該呼叫。
+     * 回傳 JS 入口點路徑讓 SDK 以 `node <path>` 方式執行，跨平台相容（Windows/Linux）
      */
     private resolveCopilotCliPath(): string {
-        // 1. 已在 constructor 中處理明確路徑與環境變數
+        // 1. 使用者明確指定路徑（constructor 中已處理 explicit path 和 env var）
         if (this.copilotCliPath) {
-            if (fs.existsSync(this.copilotCliPath)) {
+            if (!fs.existsSync(this.copilotCliPath)) {
+                console.warn(`⚠️ Specified Copilot CLI path not found: ${this.copilotCliPath}, falling back to auto-detect`);
+            } else if (!(process.platform === 'win32' && /\.(bat|cmd|ps1)$/i.test(this.copilotCliPath))) {
+                // 非 Windows 腳本，直接使用
                 return this.copilotCliPath;
             }
-            console.warn(`⚠️ Specified Copilot CLI path not found: ${this.copilotCliPath}, falling back to auto-detect`);
+            // Windows 腳本 (.bat/.cmd/.ps1) 無法直接 spawn，繼續往下解析 JS 入口
         }
 
-        // 2. 嘗試從 @github/copilot 平台套件解析原生二進位檔
-        const platformPkg = `@github/copilot-${process.platform}-${process.arch}`;
-        try {
-            const binaryPath = require.resolve(platformPkg);
-            if (fs.existsSync(binaryPath)) {
-                return binaryPath;
+        // 2. 確保 @github/copilot 已安裝最新版本
+        this.ensureCopilotCli();
+
+        // 3. 解析全域 npm @github/copilot 套件的 JS 入口點
+        const jsPath = this.getGlobalCopilotJsPath();
+        if (!jsPath) {
+            throw new Error('⛔ Failed to resolve @github/copilot CLI path after installation. Please check npm global installation.');
+        }
+
+        console.log(`📍 Using Copilot CLI at: ${jsPath}`);
+        return jsPath;
+    }
+
+    /**
+     * 確保 @github/copilot CLI 已安裝最新版本
+     * - 若未安裝：執行 npm install -g @github/copilot
+     * - 若已安裝但非最新：執行更新
+     * - 若已是最新：跳過安裝
+     * 最後印出目前安裝的版本號碼
+     */
+    private ensureCopilotCli(): void {
+        console.log('🔍 Checking @github/copilot CLI...');
+
+        const installedVersion = this.getInstalledCopilotVersion();
+
+        if (installedVersion) {
+            // 嘗試取得 npm registry 最新版本
+            let latestVersion: string | null = null;
+            try {
+                latestVersion = execSync('npm show @github/copilot version', {
+                    encoding: 'utf8',
+                    timeout: 15000,
+                    stdio: ['pipe', 'pipe', 'pipe']
+                }).trim();
+            } catch {
+                console.warn('⚠️ Could not fetch latest @github/copilot version from registry, skipping update check.');
             }
-        } catch {
-            // 平台套件未安裝，繼續嘗試其他方式
-        }
 
-        // 3. 嘗試在系統 PATH 中查找 copilot CLI（適用於全域安裝場景）
-        try {
-            const command = process.platform === 'win32' ? 'where' : 'which';
-            const result = execFileSync(command, ['copilot'], { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
-            const cliPath = result.trim().split(/\r?\n/)[0]; // 取第一個結果
-            if (cliPath && fs.existsSync(cliPath)) {
-                return cliPath;
+            if (!latestVersion || installedVersion === latestVersion) {
+                console.log(`✅ @github/copilot ${installedVersion} is up to date.`);
+                return;
             }
-        } catch {
-            // CLI 不在 PATH 中
+
+            console.log(`⬆️  Updating @github/copilot: ${installedVersion} → ${latestVersion}...`);
+        } else {
+            console.log('📦 @github/copilot CLI not found, installing...');
         }
 
-        // 4. 無法找到 CLI → 拋出明確錯誤（避免 SDK 呼叫 getBundledCliPath 導致 import.meta.resolve crash）
-        throw new Error(
-            'Copilot CLI not found. Please either:\n' +
-            '  1. Set the "inputGitHubCopilotCliPath" task input to the CLI executable path\n' +
-            '  2. Set the "COPILOT_CLI_PATH" environment variable\n' +
-            '  3. Install @github/copilot globally: npm install -g @github/copilot'
-        );
+        // 安裝/更新
+        try {
+            execSync('npm install -g @github/copilot', {
+                encoding: 'utf8',
+                stdio: 'inherit',
+                timeout: 180000
+            });
+        } catch (error: any) {
+            if (error.code === 'ENOENT' || (error.message && (error.message.includes('npm: not found') || error.message.includes("'npm' is not recognized")))) {
+                throw new Error('⛔ npm is not available. Please install Node.js/npm to proceed.');
+            }
+            throw error;
+        }
+
+        const newVersion = this.getInstalledCopilotVersion();
+        console.log(`✅ @github/copilot ${newVersion ?? '(unknown)'} installed successfully.`);
+    }
+
+    /**
+     * 取得全域已安裝的 @github/copilot 版本號碼
+     * @returns 版本號碼字串，若未安裝則回傳 null
+     */
+    private getInstalledCopilotVersion(): string | null {
+        try {
+            const result = execSync('npm list -g @github/copilot --depth=0 --json', {
+                encoding: 'utf8',
+                timeout: 10000,
+                stdio: ['pipe', 'pipe', 'pipe']
+            });
+            const data = JSON.parse(result);
+            return data?.dependencies?.['@github/copilot']?.version ?? null;
+        } catch (error: any) {
+            // 舊版 npm（<v7）在套件不存在時會回傳非零 exit code，但 stdout 仍含有效 JSON
+            try {
+                const data = JSON.parse(error.stdout || '{}');
+                return data?.dependencies?.['@github/copilot']?.version ?? null;
+            } catch (parseError: any) {
+                console.warn(`⚠️ Failed to parse npm list output: ${parseError.message}`);
+                return null;
+            }
+        }
+    }
+
+    /**
+     * 解析全域 npm @github/copilot 套件的 JS 入口點路徑
+     * SDK 對 JS 入口點會以 `node <path>` 方式執行，跨平台相容
+     * @returns JS 入口點絕對路徑，找不到時回傳 null
+     */
+    private getGlobalCopilotJsPath(): string | null {
+        try {
+            const npmRoot = execSync('npm root -g', {
+                encoding: 'utf8',
+                timeout: 10000
+            }).trim();
+
+            const pkgJsonPath = path.join(npmRoot, '@github', 'copilot', 'package.json');
+            if (!fs.existsSync(pkgJsonPath)) {
+                return null;
+            }
+
+            const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+            const pkgDir = path.dirname(pkgJsonPath);
+
+            // 優先使用 bin 欄位
+            const binField = pkg.bin;
+            if (binField) {
+                const binEntry: string = typeof binField === 'string' ? binField
+                    : (binField['copilot'] ?? Object.values(binField)[0] as string);
+                if (binEntry) {
+                    const binPath = path.resolve(pkgDir, binEntry);
+                    if (fs.existsSync(binPath)) return binPath;
+                }
+            }
+
+            // 次要使用 main 欄位
+            if (pkg.main) {
+                const mainPath = path.resolve(pkgDir, pkg.main);
+                if (fs.existsSync(mainPath)) return mainPath;
+            }
+
+            // 備用：app.js
+            const appPath = path.join(pkgDir, 'app.js');
+            if (fs.existsSync(appPath)) return appPath;
+
+        } catch (error: any) {
+            console.warn(`⚠️ Could not resolve @github/copilot JS entry point: ${error.message}`);
+        }
+        return null;
     }
 
     /**

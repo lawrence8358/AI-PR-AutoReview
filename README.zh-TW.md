@@ -50,9 +50,9 @@
 
 | 模式 | 適用情境 | 參數配置 | 前置需求 |
 |------|----------|----------|----------|
-| **Token 模式** | 雲端 CI（Azure Pipelines 託管代理程式） | 僅提供 **GitHub Token** | • GitHub Copilot 訂閱<br>• Fine-grained Personal Access Token 且具備 Copilot 唯讀權限<br>• **CI Token 模式**：在此 Task 之前執行 `npm install -g @github/copilot@10.9.4` （[安裝指南](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)） |
-| **遠端 CLI Server** | 集中式架構 | 僅提供 **CLI Server Address** | • GitHub Copilot 訂閱<br>• 已安裝 GitHub Copilot CLI（`npm install -g @github/copilot`）<br>• 已完成身份驗證（`copilot auth login`）<br>• Agent 與 Server 之間的網路連通性 |
-| **本機 CLI** | 地端 CI，已預先設定好的 Build Agent | 不提供 Token 或 Server Address | • GitHub Copilot 訂閱<br>• Build Agent 已安裝 GitHub Copilot CLI（`npm install -g @github/copilot`）<br>• 已完成身份驗證（`copilot auth login`） |
+| **Token 模式** | 雲端 CI（Azure Pipelines 託管代理程式） | 僅提供 **GitHub Token** | • GitHub Copilot 訂閱<br>• Fine-grained Personal Access Token 且具備 Copilot 唯讀權限<br>• CLI 由 Task **自動安裝** |
+| **遠端 CLI Server** | 集中式架構 | 僅提供 **CLI Server Address** | • GitHub Copilot 訂閱<br>• 伺服器已安裝 GitHub Copilot CLI（`npm install -g @github/copilot`）<br>• 已完成身份驗證（`copilot auth login`）<br>• Agent 與 Server 之間的網路連通性 |
+| **本機 CLI** | 地端 CI，已預先設定好的 Build Agent | 不提供 Token 或 Server Address | • GitHub Copilot 訂閱<br>• Build Agent 已完成身份驗證（`copilot auth login`）<br>• CLI 由 Task **自動安裝** |
 
 **重要**：GitHub Token 和 CLI Server Address **不能同時使用**，請僅選擇其中一種認證方式。
 
@@ -71,16 +71,7 @@
 
    在 Azure DevOps Pipeline 中將 Token 新增為秘密變數，避免在日誌中曝光。
 
-3. **設定 CI Pipeline（Token 模式）**
-
-   **CI Token 模式重要提示**：在使用此 Task 之前，請先安裝 GitHub Copilot CLI：
-   ```yaml
-   - script: npm install -g @github/copilot
-     displayName: '安裝 GitHub Copilot CLI'
-   ```
-   參考文件：[GitHub Copilot CLI 安裝指南](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
-
-4. **設定 Pipeline Task**
+3. **設定 Pipeline Task**
    - **AI Provider**：選擇 `GitHub Copilot`
    - **GitHub Copilot Token**：輸入您的 Fine-grained Personal Access Token（或使用秘密變數）
    - **CLI Server Address**：留空
@@ -88,14 +79,15 @@
 
 #### 遠端 CLI Server 與本機 CLI 模式設定
 
-遠端 CLI Server 和本機 CLI 模式都需要相同的初始設定：
+**遠端 CLI Server 模式** 需要在伺服器上安裝並完成身份驗證：
 
-1. **安裝 GitHub Copilot CLI**
+1. **安裝 GitHub Copilot CLI**（在伺服器上）
    ```bash
    npm install -g @github/copilot
    ```
+   參考文件：[GitHub Copilot CLI 安裝指南](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
 
-2. **進行 GitHub 身份驗證**
+2. **進行 GitHub 身份驗證**（在伺服器上）
    ```bash
    copilot auth login
    ```
@@ -115,9 +107,14 @@
    - **CLI Server Address**：輸入 `your-server-ip:8080` 或 `your-domain:8080`
    - **Model Name**：（選填）預設為 `gpt-5-mini`
 
-**本機 CLI 模式：**
+**本機 CLI 模式**，Task 會自動安裝 CLI，您只需預先在 Build Agent 完成身份驗證：
 
-3. **設定 Pipeline Task**
+1. **進行 GitHub 身份驗證**（在 Build Agent 上，一次性設定）
+   ```bash
+   npx @github/copilot auth login
+   ```
+
+2. **設定 Pipeline Task**
    - **AI Provider**：選擇 `GitHub Copilot`
    - **GitHub Copilot Token**：留空
    - **CLI Server Address**：留空
