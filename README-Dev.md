@@ -573,13 +573,7 @@ new CopilotClient({
 **必要權限**：
 - Account permissions → Copilot → Access: **Read-only**
 
-**CI Token 模式重要注意事項**：
-當使用 Token 模式時，CI Pipeline 必須先安裝 GitHub Copilot CLI：
-```yaml
-- script: npm install -g @github/copilot
-  displayName: 'Install GitHub Copilot CLI'
-```
-參考：[GitHub Copilot CLI 安裝指南](https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli)
+**注意**：使用 Token 模式時，Task 會在執行時**自動**偵測並安裝最新版 @github/copilot CLI，無需手動安裝步驟。
 
 #### 2. 遠端 CLI Server 模式（適用於集中式架構）
 **參數組合**：不提供 `githubToken`，提供 `serverAddress`
@@ -712,21 +706,14 @@ new CopilotClient()  // 使用預設配置
 
 #### 方案 2/3：使用本機 CLI 或遠端 CLI Server（推薦用於本地開發）
 
-兩種模式都需要相同的初始設定：
-
-1. **安裝並驗證 GitHub Copilot CLI**
-   ```bash
-   # 安裝 CLI
-   npm install -g @github/copilot
-
-   # 登入 GitHub
-   copilot auth login
-
-   # 檢查是否已安裝
-   copilot --version
-   ```
-
 **方案 2：本機 CLI 模式**
+
+CLI 由 Task 自動安裝，但需先完成 GitHub 身份驗證：
+
+1. **進行 GitHub 身份驗證（一次性設定）**
+   ```bash
+   npx @github/copilot auth login
+   ```
 
 2. **設定 .env**（不需要 Token 或 Server Address）
    ```properties
