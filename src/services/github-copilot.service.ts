@@ -1,5 +1,6 @@
 import { AIService, AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
+import { BaseAIService } from './base-ai.service';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -62,7 +63,7 @@ export class GithubCopilotService implements AIService {
             : (process.env.COPILOT_CLI_PATH && process.env.COPILOT_CLI_PATH.trim() !== '') ? process.env.COPILOT_CLI_PATH.trim()
                 : '';
 
-        this.model = model || 'gpt-5-mini';
+        this.model = BaseAIService.normalizeModelName(model || 'gpt-5-mini');
         // 處理 timeout：如果提供了值則使用，否則預設 60000 ms
         this.timeout = timeout !== undefined ? timeout : 60000;
     }

@@ -24,7 +24,19 @@ export abstract class BaseAIService implements AIService {
         }
 
         this.apiKey = apiKey;
-        this.model = model;
+        this.model = BaseAIService.normalizeModelName(model);
+    }
+
+    /**
+     * 正規化模型名稱：去除首尾空白、轉小寫、連續空白替換為破折號
+     * 讓使用者可輸入易讀的展示名稱，例如：
+     *   "Gemini 2.5 Flash"  → "gemini-2.5-flash"
+     *   "GPT 5 Mini"        → "gpt-5-mini"
+     *   "Grok 3 Mini"       → "grok-3-mini"
+     * 子類別可在傳入前做額外轉換（如 ClaudeService 先將版本號的點轉破折號）
+     */
+    static normalizeModelName(model: string): string {
+        return model.trim().toLowerCase().replace(/\s+/g, '-');
     }
 
     /**

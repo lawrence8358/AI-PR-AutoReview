@@ -28,6 +28,24 @@ export interface TaskInputConfig {
   copilotCliPathKey?: string;
 }
 
+// Claude 各模型的最大輸出 Token 數（作為快取優化，避免不必要的重試）
+// 對於不在此表的新模型，ClaudeService 會透過 API 錯誤自動解析實際上限並重試
+export const CLAUDE_MODEL_MAX_TOKENS: Record<string, number> = {
+  'claude-haiku-4-5': 16000,
+  'claude-haiku-4-5-20251001': 16000,
+  'claude-sonnet-4-5': 64000,
+  'claude-opus-4-5': 32000,
+  'claude-sonnet-4-6': 64000,
+  'claude-opus-4-6': 32000,
+  'claude-3-5-sonnet-20241022': 8192,
+  'claude-3-5-haiku-20241022': 8192,
+  'claude-3-opus-20240229': 4096,
+  'claude-3-sonnet-20240229': 4096,
+  'claude-3-haiku-20240307': 4096,
+};
+// 用於未知模型的預設值（設定高於現有模型上限，讓 API 回傳實際上限後自動重試）
+export const CLAUDE_DEFAULT_MAX_TOKENS = 99999;
+
 export const TASK_INPUT_CONFIG_MAP: Record<string, TaskInputConfig> = {
   [AI_PROVIDERS.OPENAI]: {
     nameKey: 'inputOpenAIModelName',
