@@ -38,7 +38,7 @@ When in doubt whether a symbol or dependency exists elsewhere, assume it does an
 ## 📋 Review Rules
 1. Begin with a summary conclusion of the analysis, for example: AI Review Status: 🟢 Recommend Approval, 🔴 Recommend Rejection, 🟡 Needs Human Review, followed by a brief explanation within 100 characters, then use <hr/> for a line break.
 2. Do not include any content unrelated to the code review.
-3. Use the language specified in [Response Language] above for the review result. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].
+3. [MANDATORY] Write the entire review in the language specified above. Do NOT use English or any other language unless you are quoting code or technical identifiers. All explanations, suggestions, and conclusions MUST be in the specified language. Each issue should be listed as a bullet point. Use the following format: Emoji [Category] : Detailed explanation. Choose from: 🔴 [Critical], ⚠️ [Warning], 💡 [Suggestion], ✨ [Convention], or ❓ [Question].
 4. Since each change may involve multiple modified files, mark each file before its corresponding review comments for easy reference.
 5. If too many files are modified to analyze them all, limit the total response length to within 15,000 characters.
 6. Skip analysis of images, binary files, or other non-code files.
@@ -67,7 +67,7 @@ export function buildInlineJsonAppend(strictMode = false): string {
     return `
 
 ---
-IMPORTANT — Inline Comment Mode: Override any previous output format instructions. You MUST respond ONLY with valid JSON in the exact format below. Do not include any markdown fences, explanations, or text outside the JSON. Apply the language preference specified above to the "conclusion", "description", and "suggestion" fields.
+IMPORTANT — Inline Comment Mode: Override any previous output format instructions. You MUST respond ONLY with valid JSON in the exact format below. Do not include any markdown fences, explanations, or text outside the JSON. ALL text fields ("conclusion", "description", "suggestion") MUST be written exclusively in the language specified at the top. Do NOT use English for these fields.
 
 {
   "summary": {
