@@ -433,6 +433,40 @@ export class Main {
 
 }
 
+async function postReviewComment(
+    main: Main,
+    devOpsService: DevOpsService,
+    connection: DevOpsConnection,
+    reviewContent: string,
+    inputs: PipelineInputs
+): Promise<void> {
+    if (inputs.enableInlineComments) {
+        console.log('📌 Inline comment mode: parsing JSON response...');
+        const inlineResult = parseInlineReviewResult(reviewContent);
+        if (inlineResult) {
+            // Auto-correct inconsistent status: if no issues found, status should always be Recommend Approval
+            if (inlineResult.issues.length === 0 && inlineResult.summary.status !== '🟢 Recommend Approval') {
+                console.warn(`⚠️ Auto-correcting status: issues array is empty but status was "${inlineResult.summary.status}". Changing to "🟢 Recommend Approval".`);
+                inlineResult.summary.status = '🟢 Recommend Approval';
+            }
+            await addInlineReviewComments(
+                devOpsService,
+                connection,
+                inlineResult,
+                inputs.aiProvider,
+                inputs.modelName,
+                inputs.groupInlineCommentsByFile,
+                inputs.inlineStrictMode
+            );
+        } else {
+            console.warn('⚠️ Failed to parse inline review JSON. Falling back to summary comment.');
+            await main.addReviewComment(devOpsService, connection, reviewContent, inputs.aiProvider, inputs.modelName);
+        }
+    } else {
+        await main.addReviewComment(devOpsService, connection, reviewContent, inputs.aiProvider, inputs.modelName);
+    }
+}
+
 /**
  * 執行 Azure DevOps Pipeline Task
  */
@@ -487,34 +521,10 @@ async function run() {
         const reviewResult = await main.generateAIReview(aiProvider, inputs, changes);
 
         // 5. 發佈評論（summary 模式 或 inline 行內標註模式）
-        if (!inputs.writeReviewResult) {
+        if (inputs.writeReviewResult) {
+            await postReviewComment(main, devOpsService, connection, reviewResult.content, inputs);
+        } else {
             console.log('⏭️ WriteReviewResult=false: Skipping PR comment posting (Debug mode)');
-        } else if (inputs.enableInlineComments) {
-            console.log('📌 Inline comment mode: parsing JSON response...');
-            const inlineResult = parseInlineReviewResult(reviewResult.content);
-            if (inlineResult) {
-                // Auto-correct inconsistent status: if no issues found, status should always be Recommend Approval
-                if (inlineResult.issues.length === 0 && inlineResult.summary.status !== '🟢 Recommend Approval') {
-                    console.warn(`⚠️ Auto-correcting status: issues array is empty but status was "${inlineResult.summary.status}". Changing to "🟢 Recommend Approval".`);
-                    inlineResult.summary.status = '🟢 Recommend Approval';
-                }
-                await addInlineReviewComments(
-                    devOpsService,
-                    connection,
-                    inlineResult,
-                    inputs.aiProvider,
-                    inputs.modelName,
-                    inputs.groupInlineCommentsByFile,
-                    inputs.inlineStrictMode
-                );
-            } else {
-                console.warn('⚠️ Failed to parse inline review JSON. Falling back to summary comment.');
-                if (inputs.writeReviewResult) {
-                    await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
-                }
-            }
-        } else if (inputs.writeReviewResult) {
-            await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
         }
         console.log('🎉 AI Pull Request Code Review completed successfully!');
         tl.setResult(tl.TaskResult.Succeeded, 'AI Code Review completed successfully');
