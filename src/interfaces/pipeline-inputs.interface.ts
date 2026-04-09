@@ -40,6 +40,8 @@ export interface PipelineInputs {
     groupInlineCommentsByFile: boolean;
     /** 嚴厲模式：true 時 AI 額外回報 suggestion 級別問題（預設 false，僅回報 critical / warning） */
     inlineStrictMode: boolean;
+    /** 是否將審核結果寫回 PR（預設 true；false 時為 Debug 模式，不寫回 PR） */
+    writeReviewResult: boolean;
 }
 
 /**

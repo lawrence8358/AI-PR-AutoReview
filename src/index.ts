@@ -64,7 +64,7 @@ export class Main {
         // Built-in 模式：直接使用內建 SystemPrompt，忽略 file 和 inline 設定
         if (source === 'Built-in') {
             console.log('📋 Using built-in system instruction (two-pass self-review process)');
-            return `[Response Language: ${responseLanguage}]\n\n` + DEFAULT_SYSTEM_INSTRUCTION;
+            return `[LANGUAGE REQUIREMENT — STRICTLY ENFORCED] You MUST write ALL review content exclusively in ${responseLanguage}. Using any other language is a critical violation. This applies to every sentence, description, suggestion, and conclusion.\n\n` + DEFAULT_SYSTEM_INSTRUCTION;
         }
 
         let instruction = '';
@@ -86,7 +86,7 @@ export class Main {
             instruction = DEFAULT_SYSTEM_INSTRUCTION;
         }
 
-        return `[Response Language: ${responseLanguage}]\n\n` + instruction;
+        return `[LANGUAGE REQUIREMENT — STRICTLY ENFORCED] You MUST write ALL review content exclusively in ${responseLanguage}. Using any other language is a critical violation. This applies to every sentence, description, suggestion, and conclusion.\n\n` + instruction;
     }
 
     /**
@@ -180,6 +180,7 @@ export class Main {
         const enableInlineComments = this.getInputValue('EnableInlineComments', 'inputEnableInlineComments', false, 'true').toLowerCase() === 'true';
         const groupInlineCommentsByFile = this.getInputValue('GroupInlineCommentsByFile', 'inputGroupInlineCommentsByFile', false, 'false').toLowerCase() === 'true';
         const inlineStrictMode = this.getInputValue('InlineStrictMode', 'inputInlineStrictMode', false, 'false').toLowerCase() === 'true';
+        const writeReviewResult = this.getInputValue('WriteReviewResult', 'inputWriteReviewResult', false, 'true').toLowerCase() === 'true';
 
         // 取得系統指令（inline 與一般模式相同來源，inline 模式額外附加 JSON 格式需求）
         const responseLanguage = this.getInputValue('ResponseLanguage', 'inputResponseLanguage', true, 'Taiwanese (zh-TW)');
@@ -230,7 +231,8 @@ export class Main {
             enableIncrementalDiff,
             enableInlineComments,
             groupInlineCommentsByFile,
-            inlineStrictMode
+            inlineStrictMode,
+            writeReviewResult
         };
     }
 
@@ -485,7 +487,9 @@ async function run() {
         const reviewResult = await main.generateAIReview(aiProvider, inputs, changes);
 
         // 5. 發佈評論（summary 模式 或 inline 行內標註模式）
-        if (inputs.enableInlineComments) {
+        if (!inputs.writeReviewResult) {
+            console.log('⏭️ WriteReviewResult=false: Skipping PR comment posting (Debug mode)');
+        } else if (inputs.enableInlineComments) {
             console.log('📌 Inline comment mode: parsing JSON response...');
             const inlineResult = parseInlineReviewResult(reviewResult.content);
             if (inlineResult) {
@@ -505,9 +509,11 @@ async function run() {
                 );
             } else {
                 console.warn('⚠️ Failed to parse inline review JSON. Falling back to summary comment.');
-                await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
+                if (inputs.writeReviewResult) {
+                    await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
+                }
             }
-        } else {
+        } else if (inputs.writeReviewResult) {
             await main.addReviewComment(devOpsService, connection, reviewResult.content, inputs.aiProvider, inputs.modelName);
         }
         console.log('🎉 AI Pull Request Code Review completed successfully!');
