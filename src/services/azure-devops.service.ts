@@ -313,27 +313,37 @@ export class AzureDevOpsService extends BaseDevOpsService {
         }
 
         // 取得 PR 的變更檔案清單
-        let changes = await gitApi.getPullRequestIterationChanges(
-            repositoryId,
-            pullRequestId,
-            targetIteration.id
-        );
-
+        // 增量模式下使用 compareTo 參數，讓 API 直接回傳兩個 iteration 之間的差異
+        let changes;
         let previousChanges: GitPullRequestIterationChanges["changeEntries"] | undefined;
 
-        // 如果在增量模式下，需要計算只包含最新 push 的變更
         if (enableIncrementalDiff && previousIteration && previousIteration.id !== undefined) {
-            // 獲取前一個 iteration 的變更以進行比較
+            // 直接透過 API 的 compareTo 取得兩個 iteration 之間的增量差異
+            changes = await gitApi.getPullRequestIterationChanges(
+                repositoryId,
+                pullRequestId,
+                targetIteration.id,
+                projectName,
+                undefined,    // top
+                undefined,    // skip
+                previousIteration.id  // compareTo: 與前一個 iteration 比較
+            );
+
+            // 同時取得前一個 iteration 的完整變更，供 getChangeDetails 查找舊版 objectId
             const previousIterationChanges = await gitApi.getPullRequestIterationChanges(
                 repositoryId,
                 pullRequestId,
-                previousIteration.id
+                previousIteration.id,
+                projectName
             );
-
-            // 計算增量變更（只保留在最新 iteration 中新增或修改的檔案）
-            changes = this.calculateIncrementalChanges(changes, previousIterationChanges);
             previousChanges = previousIterationChanges.changeEntries;
-            console.log(`ℹ️ Only changes from the latest push will be included`);
+            console.log(`ℹ️ Only changes from the latest push will be included (using API compareTo=${previousIteration.id})`);
+        } else {
+            changes = await gitApi.getPullRequestIterationChanges(
+                repositoryId,
+                pullRequestId,
+                targetIteration.id
+            );
         }
 
         if (!changes.changeEntries || changes.changeEntries.length === 0) {
@@ -477,28 +487,19 @@ export class AzureDevOpsService extends BaseDevOpsService {
                             if (enableThrottleMode) {
                                 let targetContent = '';
 
-                                // 在增量模式下，從前一個 iteration 獲取舊版本
-                                // 否則使用 originalObjectId（與基礎分支的比較）
-                                if (enableIncrementalDiff && previousIterationChanges) {
-                                    const previousChange = previousIterationChanges.find(
-                                        c => c.item?.path === filePath
-                                    );
-                                    if (previousChange && previousChange.item?.objectId) {
-                                        // 從前一個 iteration 獲取檔案版本
-                                        targetContent = await this.getFileContent(
-                                            gitApi,
-                                            repositoryId,
-                                            projectName,
-                                            previousChange.item.objectId
-                                        );
-                                    }
-                                } else if (change.item.originalObjectId) {
-                                    // 使用原始版本（通常是基礎分支）
+                                // 優先使用 originalObjectId（compareTo API 會直接設為前一 iteration 的 blob ID）
+                                // 若無則透過 previousIterationChanges 查找（舊路徑的 fallback）
+                                const prevObjectId = change.item.originalObjectId
+                                    ?? (enableIncrementalDiff && previousIterationChanges
+                                        ? previousIterationChanges.find(c => c.item?.path === filePath)?.item?.objectId
+                                        : undefined);
+
+                                if (prevObjectId) {
                                     targetContent = await this.getFileContent(
                                         gitApi,
                                         repositoryId,
                                         projectName,
-                                        change.item.originalObjectId
+                                        prevObjectId
                                     );
                                 }
 
