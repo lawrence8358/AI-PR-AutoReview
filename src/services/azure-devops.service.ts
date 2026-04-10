@@ -597,7 +597,8 @@ export class AzureDevOpsService extends BaseDevOpsService {
 
             try {
                 // 使用 git diff 比較檔案
-                const { stdout } = await this.execAsync(`git diff --no-index "${oldFile}" "${newFile}"`);
+                // -b: ignore-space-change，忽略純縮排/空白數量差異（符合 DevOps UI 的比對行為）
+                const { stdout } = await this.execAsync(`git diff --no-index -b "${oldFile}" "${newFile}"`);
                 return this.processDiffOutput(stdout);
             } catch (error: any) {
                 // git diff 在有差異時會回傳 exit code 1，這是正常的
