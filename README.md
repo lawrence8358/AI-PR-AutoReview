@@ -10,13 +10,14 @@ This is an Azure DevOps Pipeline extension that leverages the power of Large Lan
 + **Google Gemini**
 + **Anthropic Claude**
 + **xAI Grok**
++ **Ollama** (Local deployment, any Ollama-compatible model)
 
 > **Highlight**: Maximize the value of your existing **GitHub Copilot** subscription by integrating it directly into your Azure DevOps PR workflow! This extension also supports GitHub repository Pull Request CI.
 
 
 ## ✨ Main Features
 + **Automated PR review**: Automatically triggers during PR build validation, acting as a diligent 24/7 reviewer.
-+ **Universal AI Support**: Seamlessly switch between Google Gemini, OpenAI, Grok, Claude, and GitHub Copilot based on your needs.
++ **Universal AI Support**: Seamlessly switch between Google Gemini, OpenAI, Grok, Claude, GitHub Copilot, and self-hosted Ollama based on your needs.
 + **GitHub Copilot Integration**: Connect to GitHub Copilot CLI to perform reviews using your existing subscription (Individual, Business, or Enterprise), ensuring data privacy and cost-efficiency.
 + **Direct Feedback**: Publishes AI review suggestions directly to the PR as comments, threading into the conversation.
 + **Highly Customizable**: Tailor the System Prompts (Built-in, Inline, or File-based), adjust creativity (Temperature), and control token usage.
@@ -40,6 +41,7 @@ Different AI Providers have different prerequisites:
 | Grok (xAI) | Apply for API Key | Get API Key from [xAI Console](https://console.x.ai/) |
 | Claude (Anthropic) | Apply for API Key | Get API Key from [Anthropic Console](https://console.anthropic.com/) |
 | **GitHub Copilot** | GitHub Token or CLI Setup | See [GitHub Copilot Prerequisites](#github-copilot-prerequisites) below |
+| **Ollama** | Local deployment (no API Key required) | Deploy [Ollama](https://ollama.com/) locally or on an internal server |
 
 ### GitHub Copilot Prerequisites
 
@@ -218,7 +220,7 @@ For detailed review mode parameter combinations, see [PARAMETER-COMBINATIONS.md]
   
 | Label | Type | Required | Default | Description |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot. |
+| AI Provider | pickList | Yes | Google | Choose the AI platform to generate comments. Options: Google (Google Gemini), OpenAI, Grok (xAI), Claude (Anthropic), GitHub Copilot, Ollama (Local). |
 | Gemini Model Name | string | Conditional | gemini-2.5-flash | Enter the Google Gemini model name. Required when AI Provider is Google. |
 | Gemini API Key | string | Conditional | (empty) | Enter the Google Gemini API Key. Required when AI Provider is Google. |
 | OpenAI Model Name | string | Conditional | gpt-5-mini | Enter the OpenAI model name (e.g., gpt-5-mini). Required when AI Provider is OpenAI. |
@@ -232,6 +234,8 @@ For detailed review mode parameter combinations, see [PARAMETER-COMBINATIONS.md]
 | GitHub Copilot Model Name | string | No | gpt-5-mini | Enter the model name used by GitHub Copilot. Optional, defaults to gpt-5-mini. Visible when GitHub Copilot is selected. |
 | GitHub Copilot Request Timeout (ms) | string | No | 300000 | Request timeout in milliseconds for GitHub Copilot. Default: 300000 ms (5 minutes). Visible when GitHub Copilot is selected. |
 | GitHub Copilot CLI Path | string | No | (empty) | (Optional) Absolute path to the Copilot CLI executable on the build agent. Example (Windows): `C:\Tools\copilot\copilot.exe`. If empty, falls back to environment variable `COPILOT_CLI_PATH`, then system PATH. Visible when GitHub Copilot is selected. |
+| Ollama Model Name | string | Conditional | (empty) | Enter the Ollama model name (e.g. llama3.2:3b, gemma3:27b). Required when AI Provider is Ollama. Visible when Ollama is selected. |
+| Ollama Base URL | string | No | http://localhost:11434 | Enter the Ollama server base URL (e.g. http://localhost:11434 or http://127.0.0.1:11434). No API Key required. Defaults to http://localhost:11434. Visible when Ollama is selected. |
 | System Instruction Source | pickList | Yes | Built-in | Select the source of the system instruction. Options: Built-in (uses a built-in optimized code review prompt), Inline, File. |
 | System Prompt File | string | No | (empty) | Path to the system prompt file. Supported formats: .md, .txt, .json, .yaml, .yml, .xml, .html. Optional. If the file is not found or empty, falls back to inline instruction. |
 | System Instruction | multiLine | No | You are a senior software engineer. Please help... (see Task defaults) | System-level instruction used to guide the AI model's behavior. Used when System Instruction Source is 'Inline'. Optional. If empty, a default code review instruction will be used automatically. |

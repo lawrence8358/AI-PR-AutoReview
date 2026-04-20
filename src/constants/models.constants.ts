@@ -6,7 +6,8 @@ export const DEFAULT_MODELS: Record<string, string> = {
   [AI_PROVIDERS.GROK]: 'grok-3-mini',
   [AI_PROVIDERS.CLAUDE]: 'claude-haiku-4-5',
   [AI_PROVIDERS.GOOGLE]: 'gemini-2.5-flash',
-  [AI_PROVIDERS.GITHUB_COPILOT]: 'gpt-5-mini'       // 統一使用 gpt-5-mini
+  [AI_PROVIDERS.GITHUB_COPILOT]: 'gpt-5-mini',       // 統一使用 gpt-5-mini
+  [AI_PROVIDERS.OLLAMA]: ''                          // 用戶自行指定模型
 };
 
 // Environment variable key 映射（原 index.ts line 141-147）
@@ -15,7 +16,8 @@ export const API_KEY_ENV_MAP: Record<string, string> = {
   [AI_PROVIDERS.GROK]: 'GrokAPIKey',
   [AI_PROVIDERS.CLAUDE]: 'ClaudeAPIKey',
   [AI_PROVIDERS.GOOGLE]: 'GeminiAPIKey',
-  [AI_PROVIDERS.GITHUB_COPILOT]: '' // 不需要 API Key
+  [AI_PROVIDERS.GITHUB_COPILOT]: '', // 不需要 API Key
+  [AI_PROVIDERS.OLLAMA]: ''           // 不需要 API Key
 };
 
 // Task input 配置映射（原 index.ts line 152-158）
@@ -74,5 +76,11 @@ export const TASK_INPUT_CONFIG_MAP: Record<string, TaskInputConfig> = {
     githubTokenKey: 'inputGitHubCopilotToken',
     serverAddressKey: 'inputGitHubCopilotServerAddress',
     copilotCliPathKey: 'inputGitHubCopilotCliPath'
+  },
+  [AI_PROVIDERS.OLLAMA]: {
+    nameKey: 'inputOllamaModelName',
+    apiKeyKey: '',
+    defaultName: DEFAULT_MODELS[AI_PROVIDERS.OLLAMA],
+    serverAddressKey: 'inputOllamaBaseUrl'
   }
 };

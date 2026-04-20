@@ -115,11 +115,16 @@ export class Main {
 
         if (this.isDebugMode) {
             // Debug 模式：從環境變數讀取
-            const modelName = process.env.ModelName ?? DEFAULT_MODELS[providerLower] ?? 'gemini-2.5-flash';
+            const modelName = process.env.ModelName ?? DEFAULT_MODELS[providerLower] ?? '';
             const envKey = API_KEY_ENV_MAP[providerLower];
             const modelKey = envKey ? (process.env[envKey] ?? '') : '';
             const githubToken = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotToken : undefined;
-            const serverAddress = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotServerAddress : undefined;
+            let serverAddress: string | undefined;
+            if (providerLower === AI_PROVIDERS.GITHUB_COPILOT) {
+                serverAddress = process.env.GitHubCopilotServerAddress;
+            } else if (providerLower === AI_PROVIDERS.OLLAMA) {
+                serverAddress = process.env.OllamaBaseUrl;
+            }
             const copilotCliPath = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotCliPath : undefined;
             return { modelName, modelKey, githubToken, serverAddress, copilotCliPath };
         } else {

@@ -9,13 +9,14 @@
 + **Google Gemini**
 + **Anthropic Claude**
 + **xAI Grok**
++ **Ollama**（地端部署，支援任意 Ollama 相容模型）
 
 > **特色亮點**：現已支援 **GitHub Copilot**！您可以直接利用現有的 GitHub Copilot 訂閱（不分版本），將 AI 審查能力無縫整合進 Azure DevOps 流程中。本套件亦支援針對 GitHub 儲存庫的 Pull Request CI 情境。
 
 
 ## ✨ 主要功能
 + **自動化 PR 審查**：在 PR 建置驗證 (Build Validation) 過程中自動觸發，提供 24/7 的程式碼把關。
-+ **多模型支援**：單一套件完整支援 Google Gemini、OpenAI、Grok、Claude 與 GitHub Copilot，可依需求彈性切換。
++ **多模型支援**：單一套件完整支援 Google Gemini、OpenAI、Grok、Claude、GitHub Copilot 與自架 Ollama，可依需求彈性切換。
 + **GitHub Copilot 深度整合**：支援連接 GitHub Copilot CLI Server，直接重用現有的訂閱 (Individual/Business/Enterprise)，兼顧成本與隱私。
 + **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中，與開發團隊無縫協作。
 + **高度可自訂**：可詳盡自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)，打造專屬的 AI Reviewer。
@@ -39,6 +40,7 @@
 | Grok (xAI) | 申請 API Key | 從 [xAI Console](https://console.x.ai/) 獲取 API Key |
 | Claude (Anthropic) | 申請 API Key | 從 [Anthropic Console](https://console.anthropic.com/) 獲取 API Key |
 | **GitHub Copilot** | GitHub Token 或 CLI 設定 | 請參考下方 [GitHub Copilot 前置作業](#github-copilot-前置作業) |
+| **Ollama** | 地端部署（無需 API Key） | 在本機或內部伺服器部署 [Ollama](https://ollama.com/) |
 
 ### GitHub Copilot 前置作業
 
@@ -217,7 +219,7 @@
 
 | 標籤 (Label) | 類型 (Type) | 必要 | 預設值 | 說明 |
 |---|---:|:---:|---|---|
-| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)、Claude (Anthropic)、GitHub Copilot。 |
+| AI Provider | pickList | 是 | Google | 選擇要用於產生評論的 AI 平台。選項: Google (Google Gemini)、OpenAI、Grok (xAI)、Claude (Anthropic)、GitHub Copilot、Ollama (Local)。 |
 | Gemini Model Name | string | 條件式 | gemini-2.5-flash | 輸入 Google Gemini 的模型名稱，選擇 Google 時必填。 |
 | Gemini API Key | string | 條件式 | 無 | 輸入 Google Gemini 的 API Key，選擇 Google 時必填。 |
 | OpenAI Model Name | string | 條件式 | gpt-5-mini | 輸入 OpenAI 的模型名稱（例如 gpt-5、gpt-5-mini），選擇 OpenAI 時必填。 |
@@ -231,6 +233,8 @@
 | GitHub Copilot Model Name | string | 否 | gpt-5-mini | 輸入 GitHub Copilot 使用的模型名稱。選填，預設為 gpt-5-mini。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot Request Timeout (ms) | string | 否 | 300000 | GitHub Copilot 的請求逾時時間（毫秒）。預設值：300000 ms（5 分鐘）。選擇 GitHub Copilot 時顯示。 |
 | GitHub Copilot CLI Path | string | 否 | 無 | （選填）Build Agent 上 Copilot CLI 執行檔的絕對路徑。範例（Windows）：`C:\Tools\copilot\copilot.exe`。若為空，依序嘗試環境變數 `COPILOT_CLI_PATH`，再嘗試系統 PATH。選擇 GitHub Copilot 時顯示。 |
+| Ollama Model Name | string | 條件式 | 無 | 輸入 Ollama 的模型名稱（例如 llama3.2:3b、gemma3:27b）。選擇 Ollama 時必填。選擇 Ollama 時顯示。 |
+| Ollama Base URL | string | 否 | http://localhost:11434 | 輸入 Ollama 伺服器的基礎 URL（例如 http://localhost:11434 或 http://127.0.0.1:11434）。無需 API Key，預設為 http://localhost:11434。選擇 Ollama 時顯示。 |
 | System Instruction Source | pickList | 是 | Built-in | 選擇系統指令的來源。選項: Built-in (內建), Inline (行內), File (檔案)。 |
 | System Prompt File | string | 否 | 無 | 系統提示詞檔案的路徑。支援格式: .md, .txt, .json, .yaml, .yml, .xml, .html。選填。如果檔案不存在或為空，會自動回退到行內指令。 |
 | System Instruction | multiLine | 否 | You are a senior software engineer. Please help... | 用於指導 AI 模型行為的系統級指令。當 System Instruction Source 選擇 'Inline' 時使用。選填。如果為空，系統會自動使用預設的 Code Review 指令。 |

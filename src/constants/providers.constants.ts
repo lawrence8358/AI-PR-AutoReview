@@ -4,7 +4,8 @@ export const AI_PROVIDERS = {
   GROK: 'grok',
   CLAUDE: 'claude',
   GOOGLE: 'google',
-  GITHUB_COPILOT: 'githubcopilot'
+  GITHUB_COPILOT: 'githubcopilot',
+  OLLAMA: 'ollama'
 } as const;
 
 // Type helper for type safety
@@ -25,5 +26,6 @@ export const AI_PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   [AI_PROVIDERS.GROK]: 'Grok (xAI)',
   [AI_PROVIDERS.CLAUDE]: 'Claude (Anthropic)',
   [AI_PROVIDERS.GOOGLE]: 'Google',
-  [AI_PROVIDERS.GITHUB_COPILOT]: 'GitHubCopilot'
+  [AI_PROVIDERS.GITHUB_COPILOT]: 'GitHubCopilot',
+  [AI_PROVIDERS.OLLAMA]: 'Ollama'
 };
