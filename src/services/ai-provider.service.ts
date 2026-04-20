@@ -4,6 +4,7 @@ import { OpenAIService } from './openai.service';
 import { GrokService } from './grok.service';
 import { ClaudeService } from './claude.service';
 import { GithubCopilotService } from './github-copilot.service';
+import { OllamaService } from './ollama.service';
 import { AI_PROVIDERS } from '../constants';
 
 /**
@@ -11,8 +12,8 @@ import { AI_PROVIDERS } from '../constants';
  * 統一管理所有 AI 服務的建立和存取
  */
 export class AIProviderService {
-    private services: Map<string, AIService>;
-    private configs: Map<string, AIServiceConfig>;
+    private readonly services: Map<string, AIService>;
+    private readonly configs: Map<string, AIServiceConfig>;
 
     /**
      * 建立 AI 服務提供者實例
@@ -31,8 +32,8 @@ export class AIProviderService {
     public registerService(provider: string, config: AIServiceConfig): void {
         const providerLower = provider.toLowerCase();
 
-        // GitHub Copilot 不需要 apiKey，serverAddress 也是可選的（未提供時使用本機 CLI）
-        if (providerLower !== AI_PROVIDERS.GITHUB_COPILOT) {
+        // GitHub Copilot 和 Ollama 不需要 apiKey
+        if (providerLower !== AI_PROVIDERS.GITHUB_COPILOT && providerLower !== AI_PROVIDERS.OLLAMA) {
             if (!config.apiKey || config.apiKey.trim() === '') {
                 throw new Error('⛔ API key is required');
             }
@@ -83,6 +84,9 @@ export class AIProviderService {
                 // githubToken, serverAddress, timeout 和 copilotCliPath 是可選的
                 // 未提供時使用本機 CLI 和預設超時
                 service = new GithubCopilotService(config.githubToken, config.serverAddress, config.modelName, config.timeout, config.copilotCliPath);
+                break;
+            case AI_PROVIDERS.OLLAMA:
+                service = new OllamaService(config.modelName, config.serverAddress || 'http://localhost:11434');
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);

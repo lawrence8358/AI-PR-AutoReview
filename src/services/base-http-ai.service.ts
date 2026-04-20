@@ -35,6 +35,7 @@ export abstract class BaseHttpAIService extends BaseAIService {
             const requestBody = this.getRequestBody(systemInstruction, prompt, config);
             const headers = this.getHeaders();
             const requestOptions = {
+                ...this.getExtraAxiosConfig(),
                 headers: headers
             };
 
@@ -108,6 +109,14 @@ export abstract class BaseHttpAIService extends BaseAIService {
      * 取得請求 Headers (由子類別實作)
      */
     protected abstract getHeaders(): any;
+
+    /**
+     * 取得額外的 Axios 請求設定（子類別可選擇性覆寫）
+     * @returns 額外的 axios config，例如 timeout
+     */
+    protected getExtraAxiosConfig(): Record<string, any> {
+        return {};
+    }
 
     /**
      * 從回應中提取內容 (由子類別實作)

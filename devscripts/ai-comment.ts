@@ -51,6 +51,13 @@ async function run() {
                 githubToken: process.env.GitHubCopilotToken ?? '',
                 serverAddress: process.env.GitHubCopilotServerAddress ?? ''
             };
+        } else if (providerKey === AI_PROVIDERS.OLLAMA) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OLLAMA];
+            registerConfig = {
+                apiKey: '', // Ollama 不需要 API Key
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.OLLAMA] ?? '',
+                serverAddress: process.env.OllamaBaseUrl ?? 'http://localhost:11434'
+            };
         } else {
             throw new Error(`⛔ Unsupported AI Provider: ${requested}`);
         }
