@@ -12,8 +12,8 @@ import { AI_PROVIDERS } from '../constants';
  * 統一管理所有 AI 服務的建立和存取
  */
 export class AIProviderService {
-    readonly services: Map<string, AIService>;
-    readonly configs: Map<string, AIServiceConfig>;
+    private readonly services: Map<string, AIService>;
+    private readonly configs: Map<string, AIServiceConfig>;
 
     /**
      * 建立 AI 服務提供者實例

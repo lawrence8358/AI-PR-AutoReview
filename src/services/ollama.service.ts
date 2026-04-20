@@ -61,11 +61,11 @@ export class OllamaService extends BaseHttpAIService {
         };
 
         const options: Record<string, any> = {};
-        if (config?.temperature !== undefined) {
+        if (config?.temperature !== undefined)
             options.temperature = config.temperature;
-        }
-        // Default to 4096 to ensure reasoning models have enough tokens for the content field
-        options.num_predict = config?.maxOutputTokens ?? 4096;
+        if (config?.maxOutputTokens !== undefined)
+            options.num_predict = config?.maxOutputTokens;
+
         requestBody.options = options;
 
         return requestBody;
