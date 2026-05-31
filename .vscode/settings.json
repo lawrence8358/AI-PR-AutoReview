@@ -1,0 +1,7 @@
+{
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {
+            "text": "請使用 Conventional Commit 格式。可用類型包含：feat（新增功能）、add（新增檔案）、edit（修改現有功能）、remove（移除檔案或程式碼）、fix（修補錯誤）、refactor（重構程式碼）、perf（效能優化）、docs（文件或註解更新）、chore（建構流程或工具變更）。若有多個符合，濃縮成一個重要的說明，同時提交訊息需以類型前綴開頭並搭配繁體中文的簡潔描述。"
+        }
+    ] 
+}

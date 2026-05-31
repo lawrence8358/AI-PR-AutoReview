@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug WpfCodeReview",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-wpf",
+            "program": "${workspaceFolder}/WpfCodeReview/bin/Debug/net8.0-windows/WpfCodeReview.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/WpfCodeReview",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        }
+    ]
+}
