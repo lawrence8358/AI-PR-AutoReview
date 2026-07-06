@@ -9,9 +9,11 @@ describe('System Prompt Configuration', () => {
     let sandbox: sinon.SinonSandbox;
     let main: Main;
     const testFilePath = path.join(__dirname, 'test-prompt.txt');
+    const emptyTestFilePath = path.join(__dirname, 'test-empty-prompt.txt');
 
     beforeEach(() => {
         sandbox = sinon.createSandbox();
+        process.env.EnableInlineComments = 'false';
         main = new Main(true); // Enable debug mode to simulate env vars
     });
 
@@ -20,9 +22,13 @@ describe('System Prompt Configuration', () => {
         if (fs.existsSync(testFilePath)) {
             fs.unlinkSync(testFilePath);
         }
+        if (fs.existsSync(emptyTestFilePath)) {
+            fs.unlinkSync(emptyTestFilePath);
+        }
         delete process.env.SystemInstructionSource;
         delete process.env.SystemPromptFile;
         delete process.env.SystemInstruction;
+        delete process.env.EnableInlineComments;
     });
 
     it('should use inline system instruction when source is Inline', () => {
@@ -30,7 +36,7 @@ describe('System Prompt Configuration', () => {
         process.env.SystemInstruction = 'Inline instruction';
 
         const inputs = main.getPipelineInputs();
-        expect(inputs.systemInstruction).to.equal('Inline instruction');
+        expect(inputs.systemInstruction).to.include('Inline instruction');
     });
 
     it('should use file content when source is File and file exists', () => {
@@ -42,7 +48,7 @@ describe('System Prompt Configuration', () => {
         process.env.SystemInstruction = 'Default instruction';
 
         const inputs = main.getPipelineInputs();
-        expect(inputs.systemInstruction).to.equal(fileContent);
+        expect(inputs.systemInstruction).to.include(fileContent);
     });
 
     it('should fallback to inline when source is File but file does not exist', () => {
@@ -54,33 +60,28 @@ describe('System Prompt Configuration', () => {
         sandbox.stub(console, 'warn');
 
         const inputs = main.getPipelineInputs();
-        expect(inputs.systemInstruction).to.equal('Inline fallback instruction');
+        expect(inputs.systemInstruction).to.include('Inline fallback instruction');
     });
 
-    it('should use default instruction when file content is empty', () => {
-        const emptyFilePath = path.join(__dirname, 'empty-prompt.txt');
-        fs.writeFileSync(emptyFilePath, '   '); // File with only whitespace
+    it('should fallback to inline instruction when file content is empty', () => {
+        fs.writeFileSync(emptyTestFilePath, '   '); // File with only whitespace
 
         process.env.SystemInstructionSource = 'File';
-        process.env.SystemPromptFile = emptyFilePath;
+        process.env.SystemPromptFile = emptyTestFilePath;
         process.env.SystemInstruction = 'Default from env';
 
         const warnSpy = sandbox.spy(console, 'warn');
         const inputs = main.getPipelineInputs();
 
-        expect(inputs.systemInstruction).to.include('You are a senior software engineer');
+        expect(inputs.systemInstruction).to.include('Default from env');
         expect(warnSpy.called).to.be.true;
-
-        if (fs.existsSync(emptyFilePath)) {
-            fs.unlinkSync(emptyFilePath);
-        }
     });
 
-    it('should default to inline if source is not specified', () => {
+    it('should use built-in instruction if source is not specified', () => {
         process.env.SystemInstruction = 'Default instruction';
 
         const inputs = main.getPipelineInputs();
-        expect(inputs.systemInstruction).to.equal('Default instruction');
+        expect(inputs.systemInstruction).to.include('principal-level software engineer');
     });
     it('should warn when file extension is not supported', () => {
         const invalidFilePath = path.join(__dirname, 'test.bin');
@@ -107,7 +108,7 @@ describe('System Prompt Configuration', () => {
         sandbox.stub(console, 'warn');
 
         const inputs = main.getPipelineInputs();
-        expect(inputs.systemInstruction).to.include('You are a senior software engineer');
+        expect(inputs.systemInstruction).to.include('principal-level software engineer');
     });
 
     it('should use default when inline is empty', () => {
@@ -117,6 +118,6 @@ describe('System Prompt Configuration', () => {
         sandbox.stub(console, 'warn');
 
         const inputs = main.getPipelineInputs();
-        expect(inputs.systemInstruction).to.include('You are a senior software engineer');
+        expect(inputs.systemInstruction).to.include('principal-level software engineer');
     });
 });

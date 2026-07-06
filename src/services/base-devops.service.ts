@@ -11,7 +11,8 @@ export const DEFAULT_BINARY_EXTENSIONS: string[] = [
     '.exe', '.dll', '.so', '.dylib',
     '.bin', '.dat', '.class',
     '.mp3', '.mp4', '.avi', '.mov', '.flv',
-    ".md", ".markdown", ".txt", ".gitignore"
+    ".md", ".markdown", ".txt", ".gitignore",
+    '.designer.cs'
 ] as const;
 
 /**
@@ -192,10 +193,11 @@ export abstract class BaseDevOpsService implements DevOpsService {
         fileExtensions: string[],
         binaryExtensions: string[]
     ): boolean {
+        const normalizedFilePath = filePath.toLowerCase();
         const fileExt = path.extname(filePath).toLowerCase();
 
-        // 排除二進位檔案
-        if (binaryExtensions.includes(fileExt)) {
+        // 排除二進位與預設忽略檔案；支援 .designer.cs 這類複合後綴
+        if (binaryExtensions.includes(fileExt) || binaryExtensions.some(ext => normalizedFilePath.endsWith(ext.toLowerCase()))) {
             return false;
         }
 

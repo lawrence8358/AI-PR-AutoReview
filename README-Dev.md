@@ -334,7 +334,7 @@ npx ts-node devscripts/inline-comment.ts \
 | MaxOutputTokens | 選用 | （未設定） | AI 回應最大 token 數量，留空則使用模型預設限制 |
 | Temperature | 選用 | 0.2 | AI 生成隨機性 |
 | FileExtensions | 選用 | .cs,.ts,.js | 要納入的檔案副檔名（逗號分隔） |
-| BinaryExtensions | 選用 | .exe,.dll,.jpg | 要排除的二進位檔副檔名 |
+| BinaryExtensions | 選用 | .exe,.dll,.jpg | 要排除的二進位檔副檔名或檔案後綴。預設清單包含 EF Core `.Designer.cs` 等生成檔 |
 | EnableThrottleMode | 選用 | true | 啟用 AI 節流模式（true：僅送差異；false：送整個檔案） |
 | EnableIncrementalDiff | 選用 | true | 啟用增量 Diff 模式（true：僅審查最新 push 的檔案；false：審查所有 PR 變更）。**注意（Azure DevOps）**：確實根據最新 push 過濾檔案清單。**注意（GitHub）**：GitHub API 始終回傳全部 PR 檔案，作用有限。此選項在 UI 中，只有 `EnableThrottleMode=true` 時才顯示 |
 | ShowReviewContent | 選用 | true | 顯示審核內容（true：印出送給 AI 的程式碼內容、System Instruction、Prompt 以及 AI 回應；false：不顯示） |
@@ -394,6 +394,11 @@ ShowReviewContent=true
 ```
 
 注意：`src/index.ts` 在 debug 模式會從 `process.env` 讀取（而非 Azure Pipelines 的變數）。
+
+### 檔案過濾規則
+
+- `BinaryExtensions` 用於排除常見二進位或非程式碼檔案後綴。
+- 預設清單定義在 `src/services/base-devops.service.ts` 的 `DEFAULT_BINARY_EXTENSIONS`，目前包含 EF Core `.Designer.cs`；即使 `FileExtensions` 包含 `.cs`，預設也不會送進 AI Code Review。
 
 ### 環境變數說明
 

@@ -20,7 +20,7 @@
 + **GitHub Copilot 深度整合**：支援連接 GitHub Copilot CLI Server，直接重用現有的訂閱 (Individual/Business/Enterprise)，兼顧成本與隱私。
 + **直接回饋**：將 AI 的審查建議直接以評論形式發佈到 PR 中，與開發團隊無縫協作。
 + **高度可自訂**：可詳盡自訂 AI 的系統提示 (System Prompt)、模型參數 (Temperature 等)，打造專屬的 AI Reviewer。
-+ **智慧過濾**：可精確指定要包含或排除的檔案副檔名，專注於核心程式碼。
++ **智慧過濾**：可精確指定要包含或排除的檔案副檔名，預設排除清單也會略過 EF Core `.Designer.cs` 等生成檔，專注於核心程式碼。
 + **精準行號標註（行內評論）**：AI 評論直接錨定至修改行號，顯示在 Files Changed 頁籤，便於精確定位問題所在。
 
 
@@ -242,7 +242,7 @@
 | Max Output Tokens | string | 否 | （未設定） | AI 模型回應的最大輸出 Token 數量。留空則使用模型預設限制。 |
 | Temperature | string | 否 | 0.2 | AI 模型的溫度設定，用於控制回應的隨機性。 |
 | File Extensions to Include | string | 否 | 無 | 要納入 Code Review 分析的副檔名列表（以逗號分隔）。若為空，預設包含所有非二進位檔案。 |
-| Binary File Extensions to Exclude | string | 否 | 無 | 要從 Code Review 分析中排除的二進位副檔名列表（以逗號分隔）。若為空值，系統會自動排除常見的二進位檔案類型（例如：.jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .md, .markdown, .txt, .gitignore）。若您提供自訂值，系統會採用您輸入的檔案類型列表。 |
+| Binary File Extensions to Exclude | string | 否 | 無 | 要從 Code Review 分析中排除的二進位副檔名或檔案後綴列表（以逗號分隔）。若為空值，系統會自動排除常見的二進位或不需審查檔案類型（例如：.jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .md, .markdown, .txt, .gitignore, .designer.cs）。若您提供自訂值，系統會採用您輸入的檔案類型列表。 |
 | Enable AI Throttle Mode | boolean | 否 | true | 啟用 AI 節流模式（預設啟用），當啟用時僅送程式碼差異給 AI 審查；停用時則送整個新檔案內容給 AI 審查。 |
 | Enable Incremental Diff Mode | boolean | 否 | true | 啟用增量 Diff 模式，當啟用時僅審查最後一次推送（最新 iteration）的變更；停用時則審查所有 iteration 的 PR 變更。**僅在「啟用 AI 節流模式」為開啟時有效**（節流模式關閉時此選項在 UI 自動隱藏）。**注意（Azure DevOps）**：確實根據最新 push 過濾審查檔案範圍。**注意**：`enableIncrementalDiff` 僅在 Azure DevOps 上有效。在 GitHub 上此設定無作用（GitHub API 始終回傳全部 PR 檔案）。 |
 | Enable Inline Comments (精準行號標註) | boolean | 否 | true | 啟用時（預設），AI 回傳結構化 JSON，評論以精準行號標註形式（Files Changed 頁籤）發佈。停用時，發佈單一摘要評論到 PR 討論串。**注意**：啟用此模式時，系統指令會自動附加 JSON 格式需求，覆寫 AI 的輸出格式，同時保留您自訂系統指令的語言偏好。 |
