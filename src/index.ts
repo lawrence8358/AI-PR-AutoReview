@@ -61,10 +61,16 @@ export class Main {
      * @returns 最終的系統指令
      */
     private getSystemInstruction(source: string, filePath: string, inlineInstruction: string, responseLanguage: string): string {
+        const langHeader = `[CRITICAL LANGUAGE REQUIREMENT — STRICTLY ENFORCED]\n` +
+            `- You MUST write your ENTIRE response exclusively in ${responseLanguage}.\n` +
+            `- Every sentence, title, suggestion, and conclusion must be in ${responseLanguage}.\n` +
+            `- Writing in any other language is a critical violation.\n`;
+        const langFooter = `\n[FINAL REMINDER] Your response must be written entirely in ${responseLanguage}. Do not switch to any other language.`;
+
         // Built-in 模式：直接使用內建 SystemPrompt，忽略 file 和 inline 設定
         if (source === 'Built-in') {
             console.log('📋 Using built-in system instruction (two-pass self-review process)');
-            return `[LANGUAGE REQUIREMENT — STRICTLY ENFORCED] You MUST write ALL review content exclusively in ${responseLanguage}. Using any other language is a critical violation. This applies to every sentence, description, suggestion, and conclusion.\n\n` + DEFAULT_SYSTEM_INSTRUCTION;
+            return langHeader + '\n' + DEFAULT_SYSTEM_INSTRUCTION + langFooter;
         }
 
         let instruction = '';
@@ -86,7 +92,7 @@ export class Main {
             instruction = DEFAULT_SYSTEM_INSTRUCTION;
         }
 
-        return `[LANGUAGE REQUIREMENT — STRICTLY ENFORCED] You MUST write ALL review content exclusively in ${responseLanguage}. Using any other language is a critical violation. This applies to every sentence, description, suggestion, and conclusion.\n\n` + instruction;
+        return langHeader + '\n' + instruction + langFooter;
     }
 
     /**
@@ -385,7 +391,7 @@ export class Main {
             .map(change => `\n## File: ${change.path}\n\`\`\`\n${change.content}\n\`\`\``)
             .join('\n');
 
-        const prompt = codeChanges;
+        const prompt = codeChanges + `\n\n[IMPORTANT] Write your entire review response in ${inputs.responseLanguage} only.`;
 
         // 呼叫 AI 服務
         const aiResponse = await aiService.generateComment(
