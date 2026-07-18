@@ -1,4 +1,5 @@
 import { AIService, GenerateConfig } from '../interfaces/ai-service.interface';
+import { withoutTemperature } from './model-parameter-compatibility';
 
 /**
  * AI 服務基礎抽象類別
@@ -49,6 +50,24 @@ export abstract class BaseAIService implements AIService {
         console.log(`+ Max Output Tokens: ${config?.maxOutputTokens}`);
         console.log(`+ Temperature: ${config?.temperature}`);
         console.log(`+ ShowReviewContent: ${config?.showReviewContent}`);
+    }
+
+    /**
+     * 建立符合目前 provider/model 能力的生成設定。
+     * 子類別可覆寫 shouldOmitTemperature，且不會修改呼叫端傳入的物件。
+     */
+    protected prepareGenerateConfig(config?: GenerateConfig): GenerateConfig | undefined {
+        if (!config || config.temperature === undefined || !this.shouldOmitTemperature()) {
+            return config;
+        }
+
+        console.warn(`⚠️ Temperature is not supported/recommended for model "${this.model}" and will be omitted.`);
+        return withoutTemperature(config);
+    }
+
+    /** 由特定 provider/model 覆寫已知的 temperature 相容性規則。 */
+    protected shouldOmitTemperature(): boolean {
+        return false;
     }
 
     /**

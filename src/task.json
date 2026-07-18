@@ -3,7 +3,7 @@
     "id": "7fbd6a53-381e-42bd-9197-662a29d52e78",
     "name": "AI-PR-Code-Review",
     "friendlyName": "AI PR AutoReview",
-    "description": "Automated Code Review for Pull Requests. Supports GitHub Copilot, OpenAI, Google Gemini, Claude, and Grok. Bring your own AI subscription to Azure DevOps.",
+    "description": "Automated Code Review for Pull Requests. Supports GitHub Copilot, OpenAI-compatible APIs, OpenAI, Google Gemini, Claude, and Grok.",
     "helpMarkDown": "",
     "category": "Build",
     "visibility": [
@@ -12,8 +12,8 @@
     "author": "Lawrence Shen",
     "version": {
         "Major": 2,
-        "Minor": 1,
-        "Patch": 1
+        "Minor": 2,
+        "Patch": 0
     },
     "instanceNameFormat": "PR AutoReview-$(inputAiProvider)",
     "inputs": [
@@ -30,7 +30,7 @@
                 "Grok": "Grok (xAI)",
                 "Claude": "Claude (Anthropic)",
                 "GitHubCopilot": "GitHub Copilot",
-                "Ollama": "Ollama (Local)"
+                "OpenAICompatible": "OpenAI Compatible"
             }
         },
         {
@@ -151,22 +151,31 @@
             "visibleRule": "inputAiProvider == GitHubCopilot"
         },
         {
-            "name": "inputOllamaModelName",
+            "name": "inputOpenAICompatibleModelName",
             "type": "string",
-            "label": "Ollama Model Name",
+            "label": "OpenAI-Compatible Model Name",
             "defaultValue": "",
             "required": true,
-            "helpMarkDown": "Enter the Ollama model name (e.g. llama3.2:3b, gemma3:27b).",
-            "visibleRule": "inputAiProvider == Ollama"
+            "helpMarkDown": "Enter the model name exposed by the OpenAI-compatible provider (e.g. llama3.2:3b, gemma3:27b).",
+            "visibleRule": "inputAiProvider == OpenAICompatible"
         },
         {
-            "name": "inputOllamaBaseUrl",
+            "name": "inputOpenAICompatibleApiKey",
             "type": "string",
-            "label": "Ollama Base URL",
-            "defaultValue": "http://localhost:11434",
+            "label": "OpenAI-Compatible API Key",
+            "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Enter the Ollama server base URL. Default: http://localhost:11434",
-            "visibleRule": "inputAiProvider == Ollama"
+            "helpMarkDown": "Enter the provider API key. Leave empty only when the provider does not require authentication (for example, a local Ollama or LM Studio server).",
+            "visibleRule": "inputAiProvider == OpenAICompatible"
+        },
+        {
+            "name": "inputOpenAICompatibleBaseUrl",
+            "type": "string",
+            "label": "OpenAI-Compatible Base URL",
+            "defaultValue": "",
+            "required": true,
+            "helpMarkDown": "Required. Enter the full Base URL provided by your OpenAI-compatible platform, including /v1 when required.",
+            "visibleRule": "inputAiProvider == OpenAICompatible"
         },
         {
             "name": "inputMaxOutputTokens",
@@ -233,7 +242,7 @@
             "label": "File Extensions to Include",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Comma-separated list of file extensions to include in the code review analysis. If left empty, all file types are included by default, except binary types."
+            "helpMarkDown": "Comma-separated list of file extensions to include in the code review analysis. If left empty, all file types are included by default, except binary types and generated files such as .Designer.cs."
         },
         {
             "name": "inputBinaryExtensions",
@@ -241,7 +250,7 @@
             "label": "Binary File Extensions to Exclude",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Comma-separated list of binary file extensions to exclude from the code review analysis. Default includes: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv"
+            "helpMarkDown": "Comma-separated list of binary file extensions or file suffixes to exclude from the code review analysis. Default includes: .jpg, .jpeg, .png, .gif, .bmp, .ico, .webp, .pdf, .doc, .docx, .ppt, .pptx, .xls, .xlsx, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .dylib, .bin, .dat, .class, .mp3, .mp4, .avi, .mov, .flv, .designer.cs"
         },
         {
             "name": "inputEnableThrottleMode",

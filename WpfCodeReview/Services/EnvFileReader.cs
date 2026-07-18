@@ -23,6 +23,7 @@ public static class EnvFileReader
 
         settings.GeminiAPIKey              = Get(pairs, "GeminiAPIKey",              settings.GeminiAPIKey);
         settings.OpenAIAPIKey              = Get(pairs, "OpenAIAPIKey",              settings.OpenAIAPIKey);
+        settings.OpenAICompatibleAPIKey    = Get(pairs, "OpenAICompatibleAPIKey",    settings.OpenAICompatibleAPIKey);
         settings.GrokAPIKey                = Get(pairs, "GrokAPIKey",                settings.GrokAPIKey);
         settings.ClaudeAPIKey              = Get(pairs, "ClaudeAPIKey",              settings.ClaudeAPIKey);
 
@@ -30,7 +31,7 @@ public static class EnvFileReader
         settings.GitHubCopilotServerAddress= Get(pairs, "GitHubCopilotServerAddress",settings.GitHubCopilotServerAddress);
         settings.GitHubCopilotTimeout      = Get(pairs, "GitHubCopilotTimeout",      settings.GitHubCopilotTimeout);
 
-        settings.OllamaBaseUrl             = Get(pairs, "OllamaBaseUrl",             settings.OllamaBaseUrl);
+        settings.OpenAICompatibleBaseUrl   = Get(pairs, "OpenAICompatibleBaseUrl",   settings.OpenAICompatibleBaseUrl);
 
         settings.SystemInstructionSource   = Get(pairs, "SystemInstructionSource",   settings.SystemInstructionSource);
         settings.SystemInstruction         = Get(pairs, "SystemInstruction",         settings.SystemInstruction);

@@ -11,7 +11,9 @@
       "Bash(openspec status:*)",
       "Bash(openspec instructions design:*)",
       "Bash(openspec instructions tasks:*)",
-      "Bash(openspec instructions apply:*)"
+      "Bash(openspec instructions apply:*)",
+      "Bash(npm run:*)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

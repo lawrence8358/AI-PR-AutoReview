@@ -1,6 +1,7 @@
 import { AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { BaseHttpAIService } from './base-http-ai.service';
 import { DEFAULT_MODELS, AI_PROVIDERS, CLAUDE_MODEL_MAX_TOKENS, CLAUDE_DEFAULT_MAX_TOKENS } from '../constants';
+import { isClaudeSamplingParameterDeprecated } from './model-parameter-compatibility';
 
 /**
  * Claude AI 服務實作
@@ -31,6 +32,10 @@ export class ClaudeService extends BaseHttpAIService {
      */
     protected getServiceName(): string {
         return 'Claude (Anthropic)';
+    }
+
+    protected override shouldOmitTemperature(): boolean {
+        return isClaudeSamplingParameterDeprecated(this.model);
     }
 
     protected getApiUrl(): string {

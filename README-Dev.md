@@ -8,7 +8,7 @@
 d:\Project\AiPrCodeReview
 ├── devscripts/              # 本地測試腳本
 │   ├── .env                 # 環境變數設定檔（請勿提交正式環境的金鑰）
-│   ├── ai-comment.ts        # 測試 AI 服務 (Google/OpenAI/Grok/Claude)
+│   ├── ai-comment.ts        # 測試各 AI Provider（含 OpenAI-compatible）
 │   ├── pr-changes.ts        # 測試取得 PR 變更
 │   ├── pr-comment.ts        # 測試新增 PR 評論
 │   └── test-copilot-cli.ts  # 測試 GithHub Copilot CLI
@@ -38,7 +38,7 @@ d:\Project\AiPrCodeReview
 │   │   ├── grok.service.ts                   # Grok (xAI) 服務實作
 │   │   ├── claude.service.ts                 # Claude (Anthropic) 服務實作
 │   │   ├── github-copilot.service.ts         # GitHub Copilot 服務實作
-│   │   └── ollama.service.ts                 # Ollama 地端 AI 服務實作
+│   │   └── openai-compatible.service.ts      # 通用 OpenAI Chat Completions 相容服務
 │   ├── index.ts             # 主程式進入點
 │   └── task.json            # Azure Pipeline Task 定義檔
 ├── package.json             # npm 套件設定
@@ -112,9 +112,10 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts [參數]
 **注意**：`--github-token` 和 `--server-address` 不能同時使用 
 
 **AI 提供者參數**：
-- `--ai <PROVIDER>` - AI 提供者：'claude', 'openai', 'grok', 'google', 'ollama'（預設：claude）
+- `--ai <PROVIDER>` - AI 提供者：'claude', 'openai', 'grok', 'google', 'githubcopilot', 'openaicompatible'（預設：claude）
 - `--model <MODEL_NAME>` - 模型名稱（例如：claude-haiku-4-5、gpt-5-mini、gemini-2.5-flash）
-- `--key <API_KEY>` - API Key（或使用環境變數）
+- `--key <API_KEY>` - API Key（OpenAI-compatible 且端點不需驗證時可留空）
+- `--base-url <URL>` - OpenAI-compatible API Base URL（例如 `http://localhost:11434/v1`）
 
 **功能開關參數**：
 - `--throttle <true|false>` - 啟用節流模式（預設：true，僅送差異）
@@ -210,7 +211,7 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --throttle true
 ```
 
-7. **Azure DevOps + Ollama（地端模型）**
+7. **Azure DevOps + OpenAI-compatible（以地端 Ollama 為例）**
 ```bash
 npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --provider azure \
@@ -219,9 +220,9 @@ npx ts-node DEVSCRIPTS/test-pr-review.ts \
   --org https://dev.azure.com/myorg \
   --project MyProject \
   --repo-id 94408af5-6c38-45d2-a5d3-cbcfd38b8ae7 \
-  --ai ollama \
+  --ai openaicompatible \
   --model gemma3:27b \
-  --base-url http://127.0.0.1:11434 \
+  --base-url http://127.0.0.1:11434/v1 \
   --throttle true
 ```
 
@@ -316,13 +317,13 @@ npx ts-node devscripts/inline-comment.ts \
 | DevOpsProjectName | 必要 | YourProject | Azure DevOps 專案名稱 |
 | DevOpsRepositoryId | 必要 | 00000000-0000-0000-0000-000000000000 | Repository ID（或在某些實作中可用 repo 名稱） |
 | DevOpsPRId | 必要 | 4 | 要測試的 Pull Request 編號 |
-| AiProvider | 必要 | Google | 在 `AIProviderService` 中註冊的 provider 名稱（例如 `Google`、`OpenAI`、`Grok`、`Ollama`） |
+| AiProvider | 必要 | Google | 在 `AIProviderService` 中註冊的 provider 名稱（例如 `Google`、`OpenAI`、`Grok`、`OpenAICompatible`） |
 | GeminiAPIKey | 選用 | AI_KEY | Gemi API Key，若使用 Google 時，此欄位必填 |
 | OpenAIAPIKey | 選用 | sk-... | OpenAI API Key，若使用 OpenAI 時，此欄位必填 |
 | GrokAPIKey | 選用 | xai-... | Grok (xAI) API Key，若使用 Grok 時，此欄位必填 |
 | ClaudeAPIKey | 選用 | sk-ant-... | Claude API Key，若使用 Claude 時，此欄位必填 |
-| OllamaModelName | 選用 | gemma3:27b | Ollama 模型名稱（例如 llama3.2:3b、gemma3:27b），若使用 Ollama 時，此欄位必填 |
-| OllamaBaseUrl | 選用 | http://localhost:11434 | Ollama 伺服器 Base URL（預設 http://localhost:11434），無需 API Key |
+| OpenAICompatibleAPIKey | 選用 | sk-... | OpenAI-compatible 平台的 API Key；不需驗證的地端端點可留空 |
+| OpenAICompatibleBaseUrl | 條件必要 | 無 | 完整 OpenAI-compatible API Base URL，沒有通用預設值；平台需要時必須包含 `/v1` |
 | GitHubCopilotToken | 選用 | github_pat_xxx | GitHub Fine-grained Personal Access Token（格式：github_pat_xxx），用於 Token 模式認證。**不能與 GitHubCopilotServerAddress 同時使用** |
 | GitHubCopilotServerAddress | 選用 | localhost:8080 | GitHub Copilot CLI Server 位址（格式: host:port）。若未提供且未提供 Token，將使用本機的 GitHub Copilot CLI（需先完成 `copilot auth login`）。**不能與 GitHubCopilotToken 同時使用** |
 | GitHubCopilotCliPath | 選用 | C:\Tools\copilot\copilot.exe | GitHub Copilot CLI 執行檔的絕對路徑。若為空，依序嘗試環境變數 `COPILOT_CLI_PATH`，再嘗試系統 PATH |
@@ -352,7 +353,7 @@ DevOpsProjectName=YourProject
 DevOpsRepositoryId=00000000-0000-0000-0000-000000000000
 DevOpsPRId=4
 
-# AI Provider (選擇其一：Google / OpenAI / Grok / Claude / GitHubCopilot / Ollama)
+# AI Provider (選擇其一：Google / OpenAI / Grok / Claude / GitHubCopilot / OpenAICompatible)
 GeminiAPIKey=PASTE_YOUR_GEMINI_KEY
 OpenAIAPIKey=PASTE_YOUR_OPENAI_KEY
 GrokAPIKey=PASTE_YOUR_GROK_KEY
@@ -360,11 +361,11 @@ ClaudeAPIKey=PASTE_YOUR_CLAUDE_KEY
 AiProvider=Google
 ModelName=gemini-2.5-flash
 
-# Ollama（地端模型，無需 API Key，三選一：本機 / 遠端伺服器 / 自訂 Base URL）
-# AiProvider=Ollama
-# OllamaModelName=gemma3:27b
-# OllamaBaseUrl=http://localhost:11434
-# OllamaBaseUrl=http://127.0.0.1:11434
+# OpenAI-compatible（地端 Ollama 範例；其他平台請改為對應 URL / Key / 模型）
+# AiProvider=OpenAICompatible
+# ModelName=gemma3:27b
+# OpenAICompatibleAPIKey=
+# OpenAICompatibleBaseUrl=http://localhost:11434/v1
 
 # GitHub Copilot 認證模式（三選一，不能同時使用）：
 # 模式 1: Token 模式（雲端 CI）
@@ -804,7 +805,7 @@ npm run packaging:package
 
 ## 常見問題與除錯建議
 - 無法透過 PAT 取得 PR 內容：請檢查 PAT 權限（需要有 Code: Read & Pull Request Read/Write）。
-- AI 無回應或回應錯誤：檢查 `GeminiAPIKey` (或 `OpenAIAPIKey`/`GrokAPIKey`/`ClaudeAPIKey`)、`AiProvider`、`ModelName` 是否正確，並確認網路可連至該服務。
+- AI 無回應或回應錯誤：檢查 API Key、`AiProvider`、`ModelName` 與 `OpenAICompatibleBaseUrl` 是否正確，並確認網路可連至該服務。
 
 
 ## 參考文件
