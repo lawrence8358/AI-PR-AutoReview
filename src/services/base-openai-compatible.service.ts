@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { BaseAIService } from './base-ai.service';
+import { isUnsupportedTemperatureError, withoutTemperature } from './model-parameter-compatibility';
 
 /**
  * OpenAI 相容 API 的基礎服務類別
@@ -33,11 +34,13 @@ export abstract class BaseOpenAICompatibleService extends BaseAIService {
         prompt: string,
         config?: GenerateConfig
     ): Promise<AIResponse> {
-        try {
-            this.logGenerationStart(config);
+        const effectiveConfig = this.prepareGenerateConfig(config);
 
-            if (config?.showReviewContent)
-                this.printRequestInfo(systemInstruction, prompt, config);
+        try {
+            this.logGenerationStart(effectiveConfig);
+
+            if (effectiveConfig?.showReviewContent)
+                this.printRequestInfo(systemInstruction, prompt, effectiveConfig);
 
             // 建立 OpenAI 客戶端
             const clientOptions: any = { apiKey: this.apiKey };
@@ -45,13 +48,28 @@ export abstract class BaseOpenAICompatibleService extends BaseAIService {
                 clientOptions.baseURL = this.baseURL;
             }
             const client = new OpenAI(clientOptions);
-            const requestOptions = this.getRequestOptions(systemInstruction, prompt, config);
+            const requestOptions = this.getRequestOptions(systemInstruction, prompt, effectiveConfig);
 
             // 取得回應內容
-            const response = await client.chat.completions.create(requestOptions);
+            let response;
+            try {
+                response = await client.chat.completions.create(requestOptions);
+            } catch (error: any) {
+                if (effectiveConfig?.temperature === undefined || !isUnsupportedTemperatureError(error)) {
+                    throw error;
+                }
+
+                console.warn(`⚠️ ${this.getServiceName()} rejected temperature for model "${this.model}". Retrying once without it.`);
+                const retryOptions = this.getRequestOptions(
+                    systemInstruction,
+                    prompt,
+                    withoutTemperature(effectiveConfig)
+                );
+                response = await client.chat.completions.create(retryOptions);
+            }
             const content = response.choices?.[0]?.message?.content || 'No response generated';
 
-            if (config?.showReviewContent)
+            if (effectiveConfig?.showReviewContent)
                 this.printResponseInfo(content);
 
             console.log('✅ Response generated successfully');
@@ -81,7 +99,7 @@ export abstract class BaseOpenAICompatibleService extends BaseAIService {
      * @param config - 生成設定 (選用)
      * @returns OpenAI 請求參數
      */
-    private getRequestOptions(
+    protected getRequestOptions(
         systemInstruction: string,
         prompt: string,
         config?: GenerateConfig

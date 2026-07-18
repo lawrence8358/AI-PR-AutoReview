@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { AIResponse, GenerateConfig } from '../interfaces/ai-service.interface';
 import { BaseAIService } from './base-ai.service';
+import { isUnsupportedTemperatureError, withoutTemperature } from './model-parameter-compatibility';
 
 /**
  * HTTP AI 服務基礎抽象類別
@@ -24,15 +25,17 @@ export abstract class BaseHttpAIService extends BaseAIService {
         prompt: string,
         config?: GenerateConfig
     ): Promise<AIResponse> {
-        try {
-            this.logGenerationStart(config);
+        const effectiveConfig = this.prepareGenerateConfig(config);
 
-            if (config?.showReviewContent)
-                this.printRequestInfo(systemInstruction, prompt, config);
+        try {
+            this.logGenerationStart(effectiveConfig);
+
+            if (effectiveConfig?.showReviewContent)
+                this.printRequestInfo(systemInstruction, prompt, effectiveConfig);
 
             // 準備請求
             const url = this.getApiUrl();
-            const requestBody = this.getRequestBody(systemInstruction, prompt, config);
+            const requestBody = this.getRequestBody(systemInstruction, prompt, effectiveConfig);
             const headers = this.getHeaders();
             const requestOptions = {
                 ...this.getExtraAxiosConfig(),
@@ -40,16 +43,24 @@ export abstract class BaseHttpAIService extends BaseAIService {
             };
 
             // 發送請求
-            const response = await axios.post(
-                url,
-                requestBody,
-                requestOptions
-            );
+            let response;
+            try {
+                response = await axios.post(url, requestBody, requestOptions);
+            } catch (error: any) {
+                if (effectiveConfig?.temperature === undefined || !isUnsupportedTemperatureError(error)) {
+                    throw error;
+                }
+
+                console.warn(`⚠️ ${this.getServiceName()} rejected temperature for model "${this.model}". Retrying once without it.`);
+                const retryConfig = withoutTemperature(effectiveConfig);
+                const retryBody = this.getRequestBody(systemInstruction, prompt, retryConfig);
+                response = await axios.post(url, retryBody, requestOptions);
+            }
 
             // 取得回應內容
             const content = this.extractContent(response);
 
-            if (config?.showReviewContent)
+            if (effectiveConfig?.showReviewContent)
                 this.printResponseInfo(content);
 
             console.log('✅ Response generated successfully');

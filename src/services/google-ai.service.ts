@@ -2,6 +2,7 @@ import axios from 'axios';
 import { GenerateConfig } from '../interfaces/ai-service.interface';
 import { BaseHttpAIService } from './base-http-ai.service';
 import { DEFAULT_MODELS, AI_PROVIDERS } from '../constants';
+import { isGemini3Model } from './model-parameter-compatibility';
 
 /**
  * Google AI 服務實作
@@ -24,6 +25,10 @@ export class GoogleAIService extends BaseHttpAIService {
      */
     protected getServiceName(): string {
         return 'Google AI';
+    }
+
+    protected override shouldOmitTemperature(): boolean {
+        return isGemini3Model(this.model);
     }
 
     protected getApiUrl(): string {
