@@ -22,7 +22,7 @@ import { AIProviderService } from '../src/services/ai-provider.service';
 import { DevOpsProviderService } from '../src/services/devops-provider.service';
 import { parseInlineReviewResult, addInlineReviewComments } from '../src/services/inline-review.service';
 import { DevOpsConnection } from '../src/interfaces/pipeline-inputs.interface';
-import { AI_PROVIDERS, AI_PROVIDER_DISPLAY_NAMES, DEFAULT_MODELS, API_KEY_ENV_MAP, buildInlineJsonAppend } from '../src/constants';
+import { AI_PROVIDERS, DEFAULT_MODELS, API_KEY_ENV_MAP, buildInlineJsonAppend } from '../src/constants';
 
 interface InlineTestOptions {
     provider: 'azure' | 'github';
@@ -32,6 +32,7 @@ interface InlineTestOptions {
     modelKey: string;
     githubToken?: string;
     serverAddress?: string;
+    apiEndpoint?: string;
     timeout?: number;
     organizationUrl?: string;
     projectName?: string;
@@ -43,25 +44,23 @@ interface InlineTestOptions {
 }
 
 function normalizeProvider(p: string): string {
-    const lower = p.toLowerCase();
+    const lower = p.trim().toLowerCase();
     const map: Record<string, string> = {
-        [AI_PROVIDERS.CLAUDE]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.CLAUDE],
-        [AI_PROVIDERS.OPENAI]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OPENAI],
-        [AI_PROVIDERS.GROK]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GROK],
-        [AI_PROVIDERS.GOOGLE]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GOOGLE],
-        [AI_PROVIDERS.GITHUB_COPILOT]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT],
-        'copilot': AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT]
+        [AI_PROVIDERS.CLAUDE]: AI_PROVIDERS.CLAUDE,
+        [AI_PROVIDERS.OPENAI]: AI_PROVIDERS.OPENAI,
+        [AI_PROVIDERS.GROK]: AI_PROVIDERS.GROK,
+        [AI_PROVIDERS.GOOGLE]: AI_PROVIDERS.GOOGLE,
+        [AI_PROVIDERS.GITHUB_COPILOT]: AI_PROVIDERS.GITHUB_COPILOT,
+        [AI_PROVIDERS.OPENAI_COMPATIBLE]: AI_PROVIDERS.OPENAI_COMPATIBLE,
+        'openai-compatible': AI_PROVIDERS.OPENAI_COMPATIBLE,
+        'openai compatible': AI_PROVIDERS.OPENAI_COMPATIBLE,
+        'copilot': AI_PROVIDERS.GITHUB_COPILOT
     };
     return map[lower] ?? p;
 }
 
 function getKeyFromEnv(provider: string): string {
-    // provider 可能是 display name（如 'Claude (Anthropic)'）或 internal key（如 'claude'）
-    // 先從 AI_PROVIDER_DISPLAY_NAMES 反查 internal key，找不到才直接 toLowerCase
-    const internalKey = Object.entries(AI_PROVIDER_DISPLAY_NAMES)
-        .find(([, display]) => display === provider)?.[0]
-        ?? provider.toLowerCase();
-    const envKey = API_KEY_ENV_MAP[internalKey];
+    const envKey = API_KEY_ENV_MAP[normalizeProvider(provider)];
     return envKey ? process.env[envKey] ?? '' : '';
 }
 
@@ -85,6 +84,7 @@ function parseArgs(args: string[]): InlineTestOptions {
             case '--key':            opts.modelKey = val; i++; break;
             case '--github-token':   opts.githubToken = val; i++; break;
             case '--server-address': opts.serverAddress = val; i++; break;
+            case '--base-url':       opts.apiEndpoint = val; i++; break;
             case '--timeout':        opts.timeout = parseInt(val); i++; break;
             case '--org':            opts.organizationUrl = val; i++; break;
             case '--project':        opts.projectName = val; i++; break;
@@ -117,14 +117,27 @@ function parseArgs(args: string[]): InlineTestOptions {
         opts.modelKey = '';
     } else {
         if (!opts.modelKey) opts.modelKey = getKeyFromEnv(opts.aiProvider);
-        if (!opts.modelKey) {
+        if (!opts.modelKey && aiLower !== AI_PROVIDERS.OPENAI_COMPATIBLE) {
             console.error(`❌ API key is required for ${opts.aiProvider}`);
+            process.exit(1);
+        }
+    }
+
+    if (aiLower === AI_PROVIDERS.OPENAI_COMPATIBLE) {
+        opts.apiEndpoint = opts.apiEndpoint
+            ?? process.env.OpenAICompatibleBaseUrl;
+        if (!opts.apiEndpoint?.trim()) {
+            console.error('❌ OpenAI-compatible Base URL is required (--base-url or OpenAICompatibleBaseUrl)');
             process.exit(1);
         }
     }
 
     if (!opts.modelName) {
         opts.modelName = process.env.ModelName ?? DEFAULT_MODELS[aiLower] ?? '';
+    }
+    if (!opts.modelName) {
+        console.error(`❌ Model name is required for ${opts.aiProvider}`);
+        process.exit(1);
     }
 
     return opts as InlineTestOptions;
@@ -148,9 +161,10 @@ DevOps 提供者:
   GitHub: --owner <USER> --repo <NAME> --token <PAT>
 
 AI 提供者:
-  --ai <claude|openai|grok|google|githubcopilot>  (預設 claude)
+  --ai <claude|openai|grok|google|githubcopilot|openaicompatible>  (預設 claude)
   --model <NAME>   模型名稱（預設從 DEFAULT_MODELS 取得）
-  --key <KEY>      API Key（或從 .env 讀取）
+  --key <KEY>      API Key（OpenAI-compatible 平台可選）
+  --base-url <URL> OpenAI-compatible API Base URL（例如 http://localhost:11434/v1）
 
 其他:
   --dry-run   解析 JSON 但不發佈評論
@@ -187,6 +201,7 @@ async function run() {
         modelName: opts.modelName,
         githubToken: opts.githubToken,
         serverAddress: opts.serverAddress,
+        apiEndpoint: opts.apiEndpoint,
         timeout: opts.timeout
     });
 

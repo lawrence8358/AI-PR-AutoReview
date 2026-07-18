@@ -15,7 +15,7 @@ import * as path from 'path';
 import { Main } from '../src/index';
 import { AIProviderService } from '../src/services/ai-provider.service';
 import { DevOpsProviderService } from '../src/services/devops-provider.service';
-import { AI_PROVIDERS, AI_PROVIDER_DISPLAY_NAMES } from '../src/constants';
+import { AI_PROVIDERS, API_KEY_ENV_MAP, DEFAULT_MODELS } from '../src/constants';
 
 interface TestOptions {
     provider: 'azure' | 'github';
@@ -26,6 +26,7 @@ interface TestOptions {
     // For GitHub Copilot
     githubToken?: string;
     serverAddress?: string;
+    apiEndpoint?: string;
     timeout?: number;
     // For Azure DevOps
     organizationUrl?: string;
@@ -59,8 +60,8 @@ class PRReviewTester {
             enableIncrementalDiff: false,
             enableThrottleMode: true,
             showReviewContent: true,
-            aiProvider: 'Claude',
-            modelName: 'claude-haiku-4-5',
+            aiProvider: AI_PROVIDERS.CLAUDE,
+            modelName: '',
             modelKey: ''
         };
 
@@ -102,6 +103,10 @@ class PRReviewTester {
                 // 指定 GitHub Copilot CLI Server 位址
                 case '--server-address':
                     options.serverAddress = value;
+                    i++;
+                    break;
+                case '--base-url':
+                    options.apiEndpoint = value;
                     i++;
                     break;
                 // 指定 GitHub Copilot 請求超時時間 (毫秒)
@@ -168,8 +173,10 @@ class PRReviewTester {
             process.exit(1);
         }
 
+        const aiProvider = options.aiProvider.toLowerCase();
+
         // GitHub Copilot 不需要 API key，但可以使用 Token 或 serverAddress（擇一）
-        if (options.aiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
+        if (aiProvider === AI_PROVIDERS.GITHUB_COPILOT) {
             // 從環境變數讀取 GitHub Token（如果命令列未提供）
             if (!options.githubToken) {
                 options.githubToken = process.env.GITHUB_COPILOT_TOKEN || process.env.GitHubCopilotToken || '';
@@ -190,12 +197,30 @@ class PRReviewTester {
         } else {
             if (!options.modelKey) {
                 options.modelKey = this.getKeyFromEnv(options.aiProvider);
-                if (!options.modelKey) {
+                if (!options.modelKey && aiProvider !== AI_PROVIDERS.OPENAI_COMPATIBLE) {
                     console.error(`❌ Error: API key is required for ${options.aiProvider}`);
                     console.log('   Provide via --key or environment variable');
                     process.exit(1);
                 }
             }
+        }
+
+        if (aiProvider === AI_PROVIDERS.OPENAI_COMPATIBLE) {
+            options.apiEndpoint = options.apiEndpoint
+                || process.env.OpenAICompatibleBaseUrl;
+            if (!options.apiEndpoint?.trim()) {
+                console.error('❌ Error: OpenAI-compatible Base URL is required');
+                console.log('   Provide via --base-url or OpenAICompatibleBaseUrl');
+                process.exit(1);
+            }
+        }
+
+        if (!options.modelName) {
+            options.modelName = process.env.ModelName || DEFAULT_MODELS[aiProvider] || '';
+        }
+        if (!options.modelName) {
+            console.error(`❌ Error: Model name is required for ${options.aiProvider}`);
+            process.exit(1);
         }
 
         return options;
@@ -205,14 +230,17 @@ class PRReviewTester {
      * 標準化提供者名稱
      */
     private static normalizeProvider(provider: string): string {
-        const providerLower = provider.toLowerCase();
+        const providerLower = provider.trim().toLowerCase();
         const map: Record<string, string> = {
-            [AI_PROVIDERS.CLAUDE]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.CLAUDE],
-            [AI_PROVIDERS.OPENAI]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OPENAI],
-            [AI_PROVIDERS.GROK]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GROK],
-            [AI_PROVIDERS.GOOGLE]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GOOGLE],
-            [AI_PROVIDERS.GITHUB_COPILOT]: AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT],
-            'copilot': AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.GITHUB_COPILOT]
+            [AI_PROVIDERS.CLAUDE]: AI_PROVIDERS.CLAUDE,
+            [AI_PROVIDERS.OPENAI]: AI_PROVIDERS.OPENAI,
+            [AI_PROVIDERS.GROK]: AI_PROVIDERS.GROK,
+            [AI_PROVIDERS.GOOGLE]: AI_PROVIDERS.GOOGLE,
+            [AI_PROVIDERS.GITHUB_COPILOT]: AI_PROVIDERS.GITHUB_COPILOT,
+            [AI_PROVIDERS.OPENAI_COMPATIBLE]: AI_PROVIDERS.OPENAI_COMPATIBLE,
+            'openai-compatible': AI_PROVIDERS.OPENAI_COMPATIBLE,
+            'openai compatible': AI_PROVIDERS.OPENAI_COMPATIBLE,
+            'copilot': AI_PROVIDERS.GITHUB_COPILOT
         };
         return map[providerLower] || provider;
     }
@@ -221,16 +249,19 @@ class PRReviewTester {
      * 從環境變數取得 API Key
      */
     private static getKeyFromEnv(provider: string): string {
-        const keyMap: Record<string, string> = {
-            'Claude': 'ANTHROPIC_API_KEY',
-            'OpenAI': 'OPENAI_API_KEY',
-            'Grok': 'XAI_API_KEY',
-            'Google': 'GOOGLE_API_KEY',
-            'GitHubCopilot': '' // GitHub Copilot 不需要 API Key
+        const normalizedProvider = this.normalizeProvider(provider);
+        const envKey = API_KEY_ENV_MAP[normalizedProvider];
+        const conventionalEnvKeys: Record<string, string> = {
+            [AI_PROVIDERS.CLAUDE]: 'ANTHROPIC_API_KEY',
+            [AI_PROVIDERS.OPENAI]: 'OPENAI_API_KEY',
+            [AI_PROVIDERS.GROK]: 'XAI_API_KEY',
+            [AI_PROVIDERS.GOOGLE]: 'GOOGLE_API_KEY',
+            [AI_PROVIDERS.OPENAI_COMPATIBLE]: 'OPENAI_COMPATIBLE_API_KEY'
         };
 
-        const envKey = keyMap[provider];
-        return envKey ? process.env[envKey] || '' : '';
+        return (envKey ? process.env[envKey] : undefined)
+            || process.env[conventionalEnvKeys[normalizedProvider]]
+            || '';
     }
 
     /**
@@ -261,9 +292,10 @@ GitHub 參數:
   --repo <NAME>            Repository name
 
 AI 提供者參數:
-  --ai <PROVIDER>          'claude', 'openai', 'grok', 'google', 'githubcopilot'
+  --ai <PROVIDER>          'claude', 'openai', 'grok', 'google', 'githubcopilot', 'openaicompatible'
   --model <NAME>           Model name (如: claude-haiku-4-5, gpt-5-mini)
-  --key <KEY>              API key (或使用環境變數)
+  --key <KEY>              API key (OpenAI-compatible 平台可選)
+  --base-url <URL>         OpenAI-compatible API Base URL
   --github-token <TOKEN>   GitHub Token (用於 GitHub Copilot Token 認證模式)
   --server-address <ADDR>  GitHub Copilot CLI Server 位址 (格式: host:port)
 
@@ -323,6 +355,7 @@ AI 提供者參數:
                 modelName: this.options.modelName,
                 githubToken: this.options.githubToken,
                 serverAddress: this.options.serverAddress,
+                apiEndpoint: this.options.apiEndpoint,
                 timeout: this.options.timeout
             });
 
@@ -354,6 +387,7 @@ AI 提供者參數:
                 modelKey: this.options.modelKey,
                 githubToken: this.options.githubToken,
                 serverAddress: this.options.serverAddress,
+                apiEndpoint: this.options.apiEndpoint,
                 timeout: this.options.timeout,
                 systemInstruction: systemInstruction,
                 promptTemplate: '{code_changes}',

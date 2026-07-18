@@ -5,6 +5,8 @@ import OpenAI from 'openai';
 import { ClaudeService } from '../src/services/claude.service';
 import { GoogleAIService } from '../src/services/google-ai.service';
 import { OpenAIService } from '../src/services/openai.service';
+import { OpenAICompatibleService } from '../src/services/openai-compatible.service';
+import { AIProviderService } from '../src/services/ai-provider.service';
 import { BaseHttpAIService } from '../src/services/base-http-ai.service';
 import { GenerateConfig } from '../src/interfaces/ai-service.interface';
 import { isUnsupportedTemperatureError } from '../src/services/model-parameter-compatibility';
@@ -30,6 +32,20 @@ class TestGoogleAIService extends GoogleAIService {
 class TestOpenAIService extends OpenAIService {
     public requestOptions(input: GenerateConfig): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
         return this.getRequestOptions('system', 'prompt', this.prepareGenerateConfig(input));
+    }
+}
+
+class TestOpenAICompatibleService extends OpenAICompatibleService {
+    public requestOptions(input: GenerateConfig): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
+        return this.getRequestOptions('system', 'prompt', this.prepareGenerateConfig(input));
+    }
+
+    public endpoint(): string | undefined {
+        return this.baseURL;
+    }
+
+    public modelName(): string {
+        return this.model;
     }
 }
 
@@ -94,6 +110,39 @@ describe('Model parameter compatibility', () => {
         const service = new TestOpenAIService('key', 'gpt-5-mini');
 
         expect(service.requestOptions(config).temperature).to.equal(0.2);
+    });
+
+    it('uses the common max_tokens field for an OpenAI-compatible provider', () => {
+        const service = new TestOpenAICompatibleService('', 'Vendor/CaseSensitive-Model', 'http://localhost:11434/v1/');
+
+        const options = service.requestOptions(config);
+
+        expect(options.max_tokens).to.equal(1024);
+        expect(options).not.to.have.property('max_completion_tokens');
+        expect(options.temperature).to.equal(0.2);
+        expect(service.endpoint()).to.equal('http://localhost:11434/v1');
+        expect(service.modelName()).to.equal('Vendor/CaseSensitive-Model');
+    });
+
+    it('accepts OpenAI-compatible aliases and an empty key for local providers', () => {
+        const registry = new AIProviderService();
+        registry.registerService('OpenAI Compatible', {
+            apiKey: '',
+            modelName: 'local-model',
+            apiEndpoint: 'http://localhost:11434/v1'
+        });
+
+        expect(registry.getService('openai-compatible')).to.be.instanceOf(OpenAICompatibleService);
+    });
+
+    it('rejects a non-HTTP OpenAI-compatible Base URL', () => {
+        expect(() => new OpenAICompatibleService('', 'local-model', 'file:///tmp/v1'))
+            .to.throw('only allows http:// or https://');
+    });
+
+    it('requires an explicit OpenAI-compatible Base URL', () => {
+        expect(() => new OpenAICompatibleService('', 'local-model', ''))
+            .to.throw('Base URL is required');
     });
 
     it('retries an OpenAI-compatible provider once without temperature', async () => {

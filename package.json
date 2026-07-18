@@ -1,11 +1,12 @@
 {
     "name": "aiprcodereview",
-    "version": "2.1.2",
+    "version": "2.2.0",
     "keywords": [
         "AI pull request code review",
         "Azure DevOps Pipeline",
         "Gemini Code Review",
         "OpenAI Code Review",
+        "OpenAI Compatible API",
         "Grok Code Review",
         "Claude Code Review",
         "GitHub Copilot Code Review"

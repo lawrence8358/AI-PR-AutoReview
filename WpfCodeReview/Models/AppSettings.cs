@@ -13,12 +13,13 @@ public class AppSettings
     public string DevOpsPRId { get; set; } = "";
 
     // AI Provider
-    public string AiProvider { get; set; } = "Ollama";
+    public string AiProvider { get; set; } = "OpenAICompatible";
     public string ModelName { get; set; } = "";
 
     // API Keys
     public string GeminiAPIKey { get; set; } = "";
     public string OpenAIAPIKey { get; set; } = "";
+    public string OpenAICompatibleAPIKey { get; set; } = "";
     public string GrokAPIKey { get; set; } = "";
     public string ClaudeAPIKey { get; set; } = "";
 
@@ -27,8 +28,8 @@ public class AppSettings
     public string GitHubCopilotToken { get; set; } = "";
     public string GitHubCopilotTimeout { get; set; } = "300000";
 
-    // Ollama
-    public string OllamaBaseUrl { get; set; } = "http://localhost:11434";
+    // OpenAI-compatible provider
+    public string OpenAICompatibleBaseUrl { get; set; } = "";
 
     // AI Generation
     public string SystemInstructionSource { get; set; } = "Built-in";

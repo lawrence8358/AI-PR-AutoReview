@@ -12,7 +12,7 @@ async function run() {
     const prompt = `請先確認你會使用 C# 語言嗎?`;
 
     try {
-        let registerConfig: { apiKey: string; modelName: string; githubToken?: string; serverAddress?: string } | undefined;
+        let registerConfig: { apiKey: string; modelName: string; githubToken?: string; serverAddress?: string; apiEndpoint?: string } | undefined;
         let canonicalName = 'Google';
 
         if (providerKey === AI_PROVIDERS.OPENAI) {
@@ -51,12 +51,13 @@ async function run() {
                 githubToken: process.env.GitHubCopilotToken ?? '',
                 serverAddress: process.env.GitHubCopilotServerAddress ?? ''
             };
-        } else if (providerKey === AI_PROVIDERS.OLLAMA) {
-            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OLLAMA];
+        } else if (providerKey === AI_PROVIDERS.OPENAI_COMPATIBLE) {
+            canonicalName = AI_PROVIDER_DISPLAY_NAMES[AI_PROVIDERS.OPENAI_COMPATIBLE];
+            const envKey = API_KEY_ENV_MAP[AI_PROVIDERS.OPENAI_COMPATIBLE];
             registerConfig = {
-                apiKey: '', // Ollama 不需要 API Key
-                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.OLLAMA] ?? '',
-                serverAddress: process.env.OllamaBaseUrl ?? 'http://localhost:11434'
+                apiKey: process.env[envKey] ?? '',
+                modelName: process.env.ModelName ?? DEFAULT_MODELS[AI_PROVIDERS.OPENAI_COMPATIBLE] ?? '',
+                apiEndpoint: process.env.OpenAICompatibleBaseUrl ?? ''
             };
         } else {
             throw new Error(`⛔ Unsupported AI Provider: ${requested}`);
@@ -66,7 +67,8 @@ async function run() {
             apiKey: registerConfig.apiKey,
             modelName: registerConfig.modelName,
             githubToken: registerConfig.githubToken,
-            serverAddress: registerConfig.serverAddress
+            serverAddress: registerConfig.serverAddress,
+            apiEndpoint: registerConfig.apiEndpoint
         });
 
         const aiService = aiProvider.getService(canonicalName);

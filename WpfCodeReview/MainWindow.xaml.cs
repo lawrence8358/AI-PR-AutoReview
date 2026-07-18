@@ -13,6 +13,69 @@ namespace WpfCodeReview;
 
 public partial class MainWindow : Window
 {
+    private static readonly IReadOnlyDictionary<string, string[]> ModelSuggestions =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Google"] =
+            [
+                "gemini-2.5-flash",
+                "gemini-3.5-flash",
+                "gemini-3.1-pro-preview",
+                "gemini-3.1-flash-lite",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash-lite"
+            ],
+            ["OpenAI"] =
+            [
+                "gpt-5-mini",
+                "gpt-5.6-sol",
+                "gpt-5.6-terra",
+                "gpt-5.6-luna",
+                "gpt-5",
+                "gpt-5-nano"
+            ],
+            ["Grok"] =
+            [
+                "grok-3-mini",
+                "grok-4.5",
+                "grok-4-fast-non-reasoning"
+            ],
+            ["Claude"] =
+            [
+                "claude-haiku-4-5",
+                "claude-sonnet-5",
+                "claude-opus-4-8",
+                "claude-fable-5",
+                "claude-sonnet-4-5",
+                "claude-sonnet-4-6",
+                "claude-opus-4-6"
+            ],
+            ["GitHubCopilot"] =
+            [
+                "gpt-5-mini",
+                "auto",
+                "claude-sonnet-4.6",
+                "gpt-5.4",
+                "gpt-5.3-codex",
+                "gemini-3.1-pro-preview",
+                "gemini-3.5-flash",
+                "claude-haiku-4.5",
+                "mai-code-1-flash"
+            ],
+            ["OpenAICompatible"] =
+            [
+                "gemma4:26b",
+                "phi4:14b",
+                "gemma3:27b-it-qat",
+                "gemma3:27b",
+                "gemma4:31b",
+                "gemma4:e4b",
+                "translategemma:4b",
+                "gpt-oss:20b",
+                "llama3.2:latest"
+            ]
+        };
+
     private readonly SettingsService _settingsService = new();
     private AppSettings _settings = new();
     private Process? _runningProcess;
@@ -23,11 +86,34 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        FitWindowToWorkingArea();
         var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         TxtVersion.Text = ver is null ? string.Empty : $"v{ver.Major}.{ver.Minor}.{ver.Build}";
         _settings = _settingsService.Load();
         BindSettingsToUI();
         UpdateStatusBar("就緒 — 請設定工作目錄、DevOps 連線後點擊「開始審查」");
+    }
+
+    /// <summary>
+    /// Keeps the complete window, including the native title bar, inside the
+    /// usable desktop area on small displays and high-DPI configurations.
+    /// </summary>
+    private void FitWindowToWorkingArea()
+    {
+        const double margin = 24;
+        var workArea = SystemParameters.WorkArea;
+        var availableWidth = Math.Max(320, workArea.Width - margin * 2);
+        var availableHeight = Math.Max(320, workArea.Height - margin * 2);
+
+        MinWidth = Math.Min(MinWidth, availableWidth);
+        MinHeight = Math.Min(MinHeight, availableHeight);
+        MaxWidth = workArea.Width;
+        MaxHeight = workArea.Height;
+
+        Width = Math.Min(Width, availableWidth);
+        Height = Math.Min(Height, availableHeight);
+        Left = workArea.Left + (workArea.Width - Width) / 2;
+        Top = workArea.Top + (workArea.Height - Height) / 2;
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -49,12 +135,13 @@ public partial class MainWindow : Window
         TxtModelName.Text = _settings.ModelName;
         TxtGeminiKey.Text = _settings.GeminiAPIKey;
         TxtOpenAIKey.Text = _settings.OpenAIAPIKey;
+        TxtOpenAICompatibleKey.Text = _settings.OpenAICompatibleAPIKey;
         TxtGrokKey.Text = _settings.GrokAPIKey;
         TxtClaudeKey.Text = _settings.ClaudeAPIKey;
         TxtCopilotToken.Text = _settings.GitHubCopilotToken;
         TxtCopilotServer.Text = _settings.GitHubCopilotServerAddress;
         TxtCopilotTimeout.Text = _settings.GitHubCopilotTimeout;
-        TxtOllamaUrl.Text = _settings.OllamaBaseUrl;
+        TxtOpenAICompatibleUrl.Text = _settings.OpenAICompatibleBaseUrl;
 
         // Settings tab — Generation
         SelectComboItem(CmbInstructionSource, _settings.SystemInstructionSource);
@@ -90,12 +177,13 @@ public partial class MainWindow : Window
         _settings.ModelName = TxtModelName.Text.Trim();
         _settings.GeminiAPIKey = TxtGeminiKey.Text.Trim();
         _settings.OpenAIAPIKey = TxtOpenAIKey.Text.Trim();
+        _settings.OpenAICompatibleAPIKey = TxtOpenAICompatibleKey.Text.Trim();
         _settings.GrokAPIKey = TxtGrokKey.Text.Trim();
         _settings.ClaudeAPIKey = TxtClaudeKey.Text.Trim();
         _settings.GitHubCopilotToken = TxtCopilotToken.Text.Trim();
         _settings.GitHubCopilotServerAddress = TxtCopilotServer.Text.Trim();
         _settings.GitHubCopilotTimeout = TxtCopilotTimeout.Text.Trim();
-        _settings.OllamaBaseUrl = TxtOllamaUrl.Text.Trim();
+        _settings.OpenAICompatibleBaseUrl = TxtOpenAICompatibleUrl.Text.Trim();
 
         _settings.SystemInstructionSource = GetComboValue(CmbInstructionSource) ?? "Built-in";
         _settings.ResponseLanguage = TxtResponseLanguage.Text.Trim();
@@ -234,6 +322,27 @@ public partial class MainWindow : Window
     //  Event Handlers — Settings Tab
     // ─────────────────────────────────────────────────────────────────────────────
 
+    private void CmbAiProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (TxtModelName is null) return;
+
+        var provider = GetComboValue(CmbAiProvider);
+        if (provider is null || !ModelSuggestions.TryGetValue(provider, out var suggestions))
+        {
+            TxtModelName.ItemsSource = null;
+            return;
+        }
+
+        var currentModel = TxtModelName.Text.Trim();
+        TxtModelName.ItemsSource = suggestions;
+
+        // 切換 Provider 時選擇該類別的建議預設模型；ComboBox 仍可自由輸入。
+        if (!suggestions.Contains(currentModel, StringComparer.OrdinalIgnoreCase))
+        {
+            TxtModelName.Text = suggestions[0];
+        }
+    }
+
     private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
     {
         CollectSettingsFromUI();
@@ -353,7 +462,8 @@ public partial class MainWindow : Window
     {
         foreach (var item in combo.Items)
         {
-            if (item is ComboBoxItem ci && ci.Content?.ToString() == value)
+            if (item is ComboBoxItem ci
+                && (ci.Tag?.ToString() == value || ci.Content?.ToString() == value))
             {
                 combo.SelectedItem = ci;
                 return;
@@ -363,7 +473,10 @@ public partial class MainWindow : Window
     }
 
     private static string? GetComboValue(ComboBox combo)
-        => (combo.SelectedItem as ComboBoxItem)?.Content?.ToString();
+    {
+        var item = combo.SelectedItem as ComboBoxItem;
+        return item?.Tag?.ToString() ?? item?.Content?.ToString();
+    }
 
     private void TxtSearch_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {

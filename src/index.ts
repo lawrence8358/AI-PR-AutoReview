@@ -114,9 +114,9 @@ export class Main {
     /**
      * 取得 AI Provider 的模型名稱和 API Key
      * @param provider - AI Provider 名稱
-     * @returns { modelName, modelKey, serverAddress }
+     * @returns Provider-specific model, key, endpoint, and connection settings
      */
-    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string; copilotCliPath?: string } {
+    private getAIProviderConfig(provider: string): { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string; apiEndpoint?: string; copilotCliPath?: string } {
         const providerLower = provider.toLowerCase();
 
         if (this.isDebugMode) {
@@ -125,14 +125,14 @@ export class Main {
             const envKey = API_KEY_ENV_MAP[providerLower];
             const modelKey = envKey ? (process.env[envKey] ?? '') : '';
             const githubToken = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotToken : undefined;
-            let serverAddress: string | undefined;
-            if (providerLower === AI_PROVIDERS.GITHUB_COPILOT) {
-                serverAddress = process.env.GitHubCopilotServerAddress;
-            } else if (providerLower === AI_PROVIDERS.OLLAMA) {
-                serverAddress = process.env.OllamaBaseUrl;
-            }
+            const serverAddress = providerLower === AI_PROVIDERS.GITHUB_COPILOT
+                ? process.env.GitHubCopilotServerAddress
+                : undefined;
+            const apiEndpoint = providerLower === AI_PROVIDERS.OPENAI_COMPATIBLE
+                ? process.env.OpenAICompatibleBaseUrl
+                : undefined;
             const copilotCliPath = providerLower === AI_PROVIDERS.GITHUB_COPILOT ? process.env.GitHubCopilotCliPath : undefined;
-            return { modelName, modelKey, githubToken, serverAddress, copilotCliPath };
+            return { modelName, modelKey, githubToken, serverAddress, apiEndpoint, copilotCliPath };
         } else {
             // Pipeline 模式：從 Task Input 讀取
             const config = TASK_INPUT_CONFIG_MAP[providerLower];
@@ -140,9 +140,11 @@ export class Main {
                 throw new Error(`⛔ Unsupported AI Provider: ${provider}`);
             }
 
-            const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string; copilotCliPath?: string } = {
+            const result: { modelName: string; modelKey: string; githubToken?: string; serverAddress?: string; apiEndpoint?: string; copilotCliPath?: string } = {
                 modelName: tl.getInput(config.nameKey, false) ?? config.defaultName,
-                modelKey: config.apiKeyKey ? (tl.getInput(config.apiKeyKey, true) ?? '') : ''
+                modelKey: config.apiKeyKey
+                    ? (tl.getInput(config.apiKeyKey, providerLower !== AI_PROVIDERS.OPENAI_COMPATIBLE) ?? '')
+                    : ''
             };
 
             // GitHub Copilot 需要讀取 githubToken、serverAddress 和 copilotCliPath
@@ -151,6 +153,9 @@ export class Main {
             }
             if (config.serverAddressKey) {
                 result.serverAddress = tl.getInput(config.serverAddressKey, false) ?? '';
+            }
+            if (config.apiEndpointKey) {
+                result.apiEndpoint = tl.getInput(config.apiEndpointKey, true) ?? '';
             }
             if (config.copilotCliPathKey) {
                 result.copilotCliPath = tl.getInput(config.copilotCliPathKey, false) ?? '';
@@ -169,7 +174,7 @@ export class Main {
         const inputAiProvider = this.getInputValue('AiProvider', 'inputAiProvider', true, 'Google');
 
         // 取得 AI Provider 設定
-        const { modelName, modelKey, githubToken, serverAddress, copilotCliPath } = this.getAIProviderConfig(inputAiProvider);
+        const { modelName, modelKey, githubToken, serverAddress, apiEndpoint, copilotCliPath } = this.getAIProviderConfig(inputAiProvider);
 
         // GitHub Copilot 參數互斥驗證：githubToken 和 serverAddress 不能同時提供
         if (inputAiProvider.toLowerCase() === AI_PROVIDERS.GITHUB_COPILOT) {
@@ -229,6 +234,7 @@ export class Main {
             modelKey,
             githubToken,
             serverAddress,
+            apiEndpoint,
             copilotCliPath,
             timeout,
             systemInstruction,
@@ -507,6 +513,7 @@ async function run() {
             modelName: inputs.modelName,
             githubToken: inputs.githubToken,
             serverAddress: inputs.serverAddress,
+            apiEndpoint: inputs.apiEndpoint,
             timeout: inputs.timeout,
             copilotCliPath: inputs.copilotCliPath
         };

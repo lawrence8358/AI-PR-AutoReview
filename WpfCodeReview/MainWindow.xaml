@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="AI PR Code Review Tool"
         Height="820" Width="1160"
-        MinHeight="680" MinWidth="960"
-        WindowStartupLocation="CenterScreen"
+        MinHeight="520" MinWidth="760"
+        WindowStartupLocation="Manual"
+        ResizeMode="CanResize"
         Background="#F3F3F3">
 
     <Window.Resources>
@@ -389,20 +390,26 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="8"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="8"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <!-- Row 0: Provider + ModelName -->
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="AI Provider:" Style="{StaticResource FieldLabel}"/>
-                                    <ComboBox  Grid.Row="0" Grid.Column="1" x:Name="CmbAiProvider" Style="{StaticResource Combo}">
+                                    <ComboBox  Grid.Row="0" Grid.Column="1" x:Name="CmbAiProvider" Style="{StaticResource Combo}"
+                                               SelectionChanged="CmbAiProvider_SelectionChanged">
                                         <ComboBoxItem>Google</ComboBoxItem>
                                         <ComboBoxItem>OpenAI</ComboBoxItem>
                                         <ComboBoxItem>Grok</ComboBoxItem>
                                         <ComboBoxItem>Claude</ComboBoxItem>
                                         <ComboBoxItem>GitHubCopilot</ComboBoxItem>
-                                        <ComboBoxItem>Ollama</ComboBoxItem>
+                                        <ComboBoxItem Tag="OpenAICompatible">OpenAI Compatible</ComboBoxItem>
                                     </ComboBox>
                                     <TextBlock Grid.Row="0" Grid.Column="3" Text="Model Name:" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox   Grid.Row="0" Grid.Column="4" x:Name="TxtModelName" Style="{StaticResource Input}"/>
+                                    <ComboBox  Grid.Row="0" Grid.Column="4" x:Name="TxtModelName" Style="{StaticResource Combo}"
+                                               IsEditable="True"
+                                               IsTextSearchEnabled="True"
+                                               StaysOpenOnEdit="True"/>
 
                                     <!-- Row 2: Gemini + OpenAI keys -->
                                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Gemini API Key:" Style="{StaticResource FieldLabel}"/>
@@ -422,11 +429,15 @@
                                     <TextBlock Grid.Row="6" Grid.Column="3" Text="Copilot Server:" Style="{StaticResource FieldLabel}"/>
                                     <TextBox   Grid.Row="6" Grid.Column="4" x:Name="TxtCopilotServer" Style="{StaticResource Input}"/>
 
-                                    <!-- Row 8: Ollama + CopilotTimeout -->
-                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Ollama Base URL:" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox   Grid.Row="8" Grid.Column="1" x:Name="TxtOllamaUrl" Style="{StaticResource Input}"/>
-                                    <TextBlock Grid.Row="8" Grid.Column="3" Text="Copilot Timeout (ms):" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox   Grid.Row="8" Grid.Column="4" x:Name="TxtCopilotTimeout" Style="{StaticResource Input}"/>
+                                    <!-- Row 8: OpenAI-compatible settings -->
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="Compatible API Key:" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox   Grid.Row="8" Grid.Column="1" x:Name="TxtOpenAICompatibleKey" Style="{StaticResource Input}"/>
+                                    <TextBlock Grid.Row="8" Grid.Column="3" Text="Compatible Base URL:" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox   Grid.Row="8" Grid.Column="4" x:Name="TxtOpenAICompatibleUrl" Style="{StaticResource Input}"/>
+
+                                    <!-- Row 10: Copilot timeout -->
+                                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Copilot Timeout (ms):" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox   Grid.Row="10" Grid.Column="1" x:Name="TxtCopilotTimeout" Style="{StaticResource Input}"/>
                                 </Grid>
                             </GroupBox>
 

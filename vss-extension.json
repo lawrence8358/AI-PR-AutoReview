@@ -2,9 +2,9 @@
     "manifestVersion": 1,
     "id": "ai-pr-autoreview",
     "name": "AutoCodeReview.ai",
-    "version": "2.1.2",
+    "version": "2.2.0",
     "publisher": "LawrenceShen",
-    "description": "Automated Code Review for Pull Requests. Supports GitHub Copilot, OpenAI, Google Gemini, Claude, and Grok. Bring your own AI subscription to Azure DevOps.",
+    "description": "Automated Code Review for Pull Requests. Supports GitHub Copilot, OpenAI-compatible APIs, OpenAI, Google Gemini, Claude, and Grok.",
     "public": true,
     "targets": [
         {

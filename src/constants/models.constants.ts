@@ -7,7 +7,7 @@ export const DEFAULT_MODELS: Record<string, string> = {
   [AI_PROVIDERS.CLAUDE]: 'claude-haiku-4-5',
   [AI_PROVIDERS.GOOGLE]: 'gemini-2.5-flash',
   [AI_PROVIDERS.GITHUB_COPILOT]: 'gpt-5-mini',       // 統一使用 gpt-5-mini
-  [AI_PROVIDERS.OLLAMA]: ''                          // 用戶自行指定模型
+  [AI_PROVIDERS.OPENAI_COMPATIBLE]: ''               // 由使用者依平台指定
 };
 
 // Environment variable key 映射（原 index.ts line 141-147）
@@ -17,7 +17,7 @@ export const API_KEY_ENV_MAP: Record<string, string> = {
   [AI_PROVIDERS.CLAUDE]: 'ClaudeAPIKey',
   [AI_PROVIDERS.GOOGLE]: 'GeminiAPIKey',
   [AI_PROVIDERS.GITHUB_COPILOT]: '', // 不需要 API Key
-  [AI_PROVIDERS.OLLAMA]: ''           // 不需要 API Key
+  [AI_PROVIDERS.OPENAI_COMPATIBLE]: 'OpenAICompatibleAPIKey'
 };
 
 // Task input 配置映射（原 index.ts line 152-158）
@@ -27,6 +27,7 @@ export interface TaskInputConfig {
   defaultName: string;
   githubTokenKey?: string;
   serverAddressKey?: string;
+  apiEndpointKey?: string;
   copilotCliPathKey?: string;
 }
 
@@ -77,10 +78,10 @@ export const TASK_INPUT_CONFIG_MAP: Record<string, TaskInputConfig> = {
     serverAddressKey: 'inputGitHubCopilotServerAddress',
     copilotCliPathKey: 'inputGitHubCopilotCliPath'
   },
-  [AI_PROVIDERS.OLLAMA]: {
-    nameKey: 'inputOllamaModelName',
-    apiKeyKey: '',
-    defaultName: DEFAULT_MODELS[AI_PROVIDERS.OLLAMA],
-    serverAddressKey: 'inputOllamaBaseUrl'
+  [AI_PROVIDERS.OPENAI_COMPATIBLE]: {
+    nameKey: 'inputOpenAICompatibleModelName',
+    apiKeyKey: 'inputOpenAICompatibleApiKey',
+    defaultName: DEFAULT_MODELS[AI_PROVIDERS.OPENAI_COMPATIBLE],
+    apiEndpointKey: 'inputOpenAICompatibleBaseUrl'
   }
 };

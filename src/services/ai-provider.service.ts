@@ -4,8 +4,8 @@ import { OpenAIService } from './openai.service';
 import { GrokService } from './grok.service';
 import { ClaudeService } from './claude.service';
 import { GithubCopilotService } from './github-copilot.service';
-import { OllamaService } from './ollama.service';
-import { AI_PROVIDERS } from '../constants';
+import { OpenAICompatibleService } from './openai-compatible.service';
+import { AI_PROVIDERS, AI_PROVIDER_DISPLAY_NAMES } from '../constants';
 
 /**
  * AI 服務提供者類別
@@ -30,10 +30,10 @@ export class AIProviderService {
      * @throws {Error} 當設定無效時拋出錯誤
      */
     public registerService(provider: string, config: AIServiceConfig): void {
-        const providerLower = provider.toLowerCase();
+        const providerLower = this.normalizeProvider(provider);
 
-        // GitHub Copilot 和 Ollama 不需要 apiKey
-        if (providerLower !== AI_PROVIDERS.GITHUB_COPILOT && providerLower !== AI_PROVIDERS.OLLAMA) {
+        // GitHub Copilot 不使用 API Key；OpenAI-compatible 平台可能不需要 Key。
+        if (providerLower !== AI_PROVIDERS.GITHUB_COPILOT && providerLower !== AI_PROVIDERS.OPENAI_COMPATIBLE) {
             if (!config.apiKey || config.apiKey.trim() === '') {
                 throw new Error('⛔ API key is required');
             }
@@ -52,7 +52,7 @@ export class AIProviderService {
      * @throws {Error} 當提供者不支援或未註冊時拋出錯誤
      */
     public getService(provider: string): AIService {
-        const normalizedProvider = provider.toLowerCase();
+        const normalizedProvider = this.normalizeProvider(provider);
 
         // 檢查是否已有實例
         if (this.services.has(normalizedProvider)) {
@@ -85,8 +85,12 @@ export class AIProviderService {
                 // 未提供時使用本機 CLI 和預設超時
                 service = new GithubCopilotService(config.githubToken, config.serverAddress, config.modelName, config.timeout, config.copilotCliPath);
                 break;
-            case AI_PROVIDERS.OLLAMA:
-                service = new OllamaService(config.modelName, config.serverAddress || 'http://localhost:11434');
+            case AI_PROVIDERS.OPENAI_COMPATIBLE:
+                service = new OpenAICompatibleService(
+                    config.apiKey,
+                    config.modelName,
+                    config.apiEndpoint || ''
+                );
                 break;
             default:
                 throw new Error(`⛔ Unsupported AI provider: ${provider}`);
@@ -103,7 +107,7 @@ export class AIProviderService {
      * @returns 是否已註冊
      */
     public hasService(provider: string): boolean {
-        return this.configs.has(provider.toLowerCase());
+        return this.configs.has(this.normalizeProvider(provider));
     }
 
     /**
@@ -111,8 +115,25 @@ export class AIProviderService {
      * @param provider - AI 服務提供者名稱
      */
     public removeService(provider: string): void {
-        const normalizedProvider = provider.toLowerCase();
+        const normalizedProvider = this.normalizeProvider(provider);
         this.configs.delete(normalizedProvider);
         this.services.delete(normalizedProvider);
+    }
+
+    private normalizeProvider(provider: string): string {
+        const value = provider.trim();
+        const normalized = value.toLowerCase();
+
+        if (normalized === 'openai-compatible' || normalized === 'openai compatible') {
+            return AI_PROVIDERS.OPENAI_COMPATIBLE;
+        }
+
+        const displayNameMatch = Object.entries(AI_PROVIDER_DISPLAY_NAMES)
+            .find(([, displayName]) => displayName.toLowerCase() === normalized);
+        if (displayNameMatch) {
+            return displayNameMatch[0];
+        }
+
+        return normalized;
     }
 }
